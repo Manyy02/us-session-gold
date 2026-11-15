@@ -669,6 +669,11 @@ def load_live():
                 t = re.search(r"<title>([^<]*)</title>", h)
                 print(f"[live] {name}: HTTP {r.status_code} {r.url[:70]} titre={t.group(1)[:60] if t else None} "
                       f"canonical={'canonical' in h} isLive={'isLive' in h} taille={len(h)}", file=sys.stderr)
+                c = re.search(r'<link rel="canonical"[^>]*>', h)
+                print(f"[live]   canonical={c.group(0)[:120] if c else None}", file=sys.stderr)
+                print(f"[live]   videoIds={re.findall(r'"videoId":"([\w-]{11})"', h)[:6]}", file=sys.stderr)
+                i = h.find('"isLive":true')
+                print(f"[live]   autour isLive={h[max(0, i - 300):i + 40]!r}" if i >= 0 else "[live]   isLive absent", file=sys.stderr)
             vid = (re.search(r'rel="canonical"[^>]*watch\?v=([\w-]{11})', h) or re.search(r'og:url"[^>]*watch\?v=([\w-]{11})', h)
                    or re.search(r'"currentVideoEndpoint".{0,200}?"videoId":"([\w-]{11})"', h, re.S))
             live = bool(re.search(r'"isLiveNow":true|"isLive":true', h)) and vid is not None
