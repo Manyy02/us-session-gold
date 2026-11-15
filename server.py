@@ -39,7 +39,7 @@ ASSETS = {
 LABEL = {v[0]: v[1] for v in ASSETS.values()}
 KIND = {v[0]: v[2] for v in ASSETS.values()}
 MAIN = ["dow", "ndx", "spx", "gold", "oil", "eur"]
-FUTURES = {"dow": "YM=F", "ndx": "NQ=F", "spx": "ES=F", "gold": "GC=F", "oil": "CL=F", "eur": "6E=F"}
+FUTURES = {"dow": "YM=F", "ndx": "NQ=F", "spx": "ES=F", "gold": "GC=F", "oil": "CL=F", "eur": "6E=F"}  # alertes « dernière heure »
 FRED_IDS = ["DFF", "DGS2", "DFII10", "T10YIE", "T10Y2Y", "CPIAUCSL", "CPILFESL", "PCEPILFE", "UNRATE",
             "PAYEMS", "ICSA", "A191RL1Q225SBEA", "RSAFS", "INDPRO", "UMCSENT"]
 
@@ -201,41 +201,6 @@ def asset_cards(px):
                     "ytd": pct(last, prev_year.iloc[-1]) if len(prev_year) else None,
                     "trend": trend, "sma50": sma50, "sma200": sma200, "from_hi": pct(last, hi),
                     "spark": {"t": [d.strftime("%d/%m") for d in sp.index], "v": sp.round(4).tolist()}})
-    return out
-
-
-def drivers(px, fred):
-    out = []
-    dxy = px["dxy"].dropna()
-    c = chg(dxy, 20)
-    out.append({"label": "Dollar (DXY)", "value": f"{dxy.iloc[-1]:.2f}", "change": f"{c:+.2f} % sur 20 j", "dir": np.sign(round(c, 1)),
-                "note": "Dollar en hausse : pèse sur l'or et les multinationales." if c > 0.5 else
-                "Dollar en baisse : soutient l'or et les bénéfices à l'export." if c < -0.5 else "Dollar stable."})
-    t10 = px["us10y"].dropna()
-    c = chg(t10, 20, "yield")
-    out.append({"label": "Taux US 10 ans", "value": f"{t10.iloc[-1]:.2f} %", "change": f"{c:+.2f} pt sur 20 j", "dir": np.sign(round(c, 2)),
-                "note": "Hausse des taux : pression sur le Nasdaq et l'or." if c > 0.1 else
-                "Détente des taux : favorable au Nasdaq et à l'or." if c < -0.1 else "Taux stables."})
-    if "DFII10" in fred:
-        r = fred["DFII10"]
-        c = r.iloc[-1] - at_or_before(r, 30)
-        out.append({"label": "Taux réel 10 ans", "value": f"{r.iloc[-1]:.2f} %", "change": f"{c:+.2f} pt sur 1 mois", "dir": np.sign(round(c, 2)),
-                    "note": "Principal moteur de l'or : quand il monte, l'or baisse généralement."})
-    if "DFF" in fred and "DGS2" in fred:
-        ff, two = fred["DFF"].iloc[-1], fred["DGS2"].iloc[-1]
-        gap = two - ff
-        exp = "des baisses de taux" if gap < -0.25 else "des hausses de taux" if gap > 0.25 else "un statu quo"
-        out.append({"label": "Anticipations Fed", "value": f"Fed {ff:.2f} %", "change": f"taux 2 ans {two:.2f} %", "dir": np.sign(round(gap, 1)),
-                    "note": f"Le marché anticipe {exp} sur 12–24 mois (écart 2 ans − Fed : {gap:+.2f} pt)."})
-    v = px["vix"].dropna()
-    out.append({"label": "VIX (peur)", "value": f"{v.iloc[-1]:.1f}", "change": f"{chg(v, 1):+.1f} % sur 1 j", "dir": np.sign(round(chg(v, 1), 0)),
-                "note": "Stress élevé sur les actions." if v.iloc[-1] > 25 else "Nervosité modérée." if v.iloc[-1] > 18
-                else "Marché serein." if v.iloc[-1] > 13 else "Grande complaisance."})
-    if "T10YIE" in fred:
-        b = fred["T10YIE"]
-        c = b.iloc[-1] - at_or_before(b, 30)
-        out.append({"label": "Inflation anticipée 10 ans", "value": f"{b.iloc[-1]:.2f} %", "change": f"{c:+.2f} pt sur 1 mois", "dir": np.sign(round(c, 2)),
-                    "note": "Ce que le marché obligataire attend comme inflation. Liée au pétrole, elle soutient l'or quand elle monte."})
     return out
 
 
@@ -415,69 +380,11 @@ def themes(px, fred):
 
 
 def correlations(px):
+    """Matrice de corrélation des variations journalières sur les 60 dernières séances."""
     al = px.dropna(subset=["spx"]).ffill()
-    rets = pd.DataFrame({k: (al[k].diff() if KIND[k] == "yield" else np.log(al[k]).diff()) for k in al.columns}).dropna()
-    order = ["dow", "ndx", "spx", "gold", "oil", "eur", "dxy", "us10y", "vix"]
-    W = (20, 60, 120)
-    mats = {w: rets.tail(w)[order].corr().values.tolist() for w in W}
-    gold_vs = {k: {w: rets.tail(w)["gold"].corr(rets.tail(w)[k]) for w in W} for k in order if k != "gold"}
-    roll_keys = ["spx", "ndx", "dow", "dxy", "us10y", "oil", "eur"]
-    rolling = {w: {k: rets["gold"].rolling(w).corr(rets[k]).tail(250).tolist() for k in roll_keys} for w in W}
-    dates = rets.tail(250).index.strftime("%d/%m/%y").tolist()
-
-    c = lambda a, b, w=60: rets.tail(w)[a].corr(rets.tail(w)[b])
-    ins = []
-    gs = c("gold", "spx")
-    if gs > 0.3:
-        ins.append(("warn", "L'or monte et baisse avec les actions",
-                    f"Corrélation or / S&P 500 de {gs:+.2f}. Les deux actifs suivent la liquidité : l'or ne protège pas d'une baisse des indices en ce moment."))
-    elif gs < -0.3:
-        ins.append(("pos", "L'or joue son rôle de valeur refuge",
-                    f"Corrélation or / S&P 500 de {gs:+.2f}. Quand les indices baissent, l'or tend à monter."))
-    else:
-        ins.append(("neutral", "L'or évolue indépendamment des actions",
-                    f"Corrélation or / S&P 500 de {gs:+.2f} : les deux marchés suivent des moteurs différents."))
-    gd = c("gold", "dxy")
-    if gd > -0.15:
-        ins.append(("warn", "Le lien or / dollar est rompu",
-                    f"Corrélation de {gd:+.2f} alors qu'elle est normalement négative. Un autre moteur domine : achats des banques centrales, géopolitique ou demande d'Asie."))
-    else:
-        ins.append(("pos", "Relation or / dollar classique",
-                    f"Corrélation de {gd:+.2f} : un dollar qui monte fait baisser l'or. Surveillez le DXY pour anticiper l'or."))
-    nr = c("ndx", "us10y")
-    if nr < -0.25:
-        ins.append(("neg", "Le Nasdaq est piloté par les taux",
-                    f"Corrélation Nasdaq / taux 10 ans de {nr:+.2f} : chaque hausse des taux fait baisser la tech. Les chiffres d'inflation sont décisifs."))
-    elif nr > 0.25:
-        ins.append(("pos", "Le Nasdaq suit la croissance",
-                    f"Corrélation Nasdaq / taux 10 ans de {nr:+.2f} : taux et actions montent ensemble, signe de bonnes nouvelles économiques."))
-    rot = chg(px["ndx"].dropna(), 21) - chg(px["dow"].dropna(), 21)
-    if abs(rot) > 2:
-        ins.append(("neutral", "Rotation sectorielle" + (" vers la tech" if rot > 0 else " vers la valeur"),
-                    f"Sur 1 mois, le Nasdaq {'surperforme' if rot > 0 else 'sous-performe'} le Dow de {abs(rot):.1f} points. "
-                    + ("Les investisseurs privilégient la croissance." if rot > 0 else "Les investisseurs privilégient les valeurs industrielles et financières.")))
-    ge = c("gold", "eur")
-    if ge > 0.4:
-        ins.append(("neutral", "Or et EUR/USD portés par le même moteur",
-                    f"Corrélation de {ge:+.2f} : les deux bougent avec la faiblesse ou la force du dollar. Un mouvement de l'EUR/USD annonce souvent celui de l'or."))
-    ot = c("oil", "us10y")
-    if ot > 0.3:
-        ins.append(("warn", "Le pétrole pousse les taux",
-                    f"Corrélation pétrole / taux 10 ans de {ot:+.2f} : le marché craint que l'énergie relance l'inflation. Une hausse du baril pèse alors sur le Nasdaq."))
-    os_ = c("oil", "spx")
-    if os_ > 0.35:
-        ins.append(("neutral", "Pétrole et actions suivent la croissance",
-                    f"Corrélation pétrole / S&P 500 de {os_:+.2f} : les deux reflètent les anticipations de demande mondiale."))
-    elif os_ < -0.25:
-        ins.append(("warn", "Le pétrole pèse sur les actions",
-                    f"Corrélation pétrole / S&P 500 de {os_:+.2f} : la hausse du baril est vue comme une taxe sur la consommation."))
-    for k in ("spx", "dxy"):
-        d = c("gold", k, 20) - c("gold", k, 120)
-        if abs(d) > 0.4:
-            ins.append(("warn", f"Changement de régime or / {LABEL[k]}",
-                        f"La corrélation sur 20 jours ({c('gold', k, 20):+.2f}) s'écarte fortement de celle sur 120 jours ({c('gold', k, 120):+.2f})."))
-    return {"order": order, "labels": [LABEL[k] for k in order], "matrix": mats, "gold_vs": gold_vs,
-            "rolling": rolling, "dates": dates, "insights": [{"tone": a, "title": b, "text": t} for a, b, t in ins]}
+    order = ["dow", "ndx", "spx", "gold", "oil", "eur", "dxy"]
+    rets = pd.DataFrame({k: np.log(al[k]).diff() for k in order}).dropna().tail(60)
+    return {"order": order, "matrix": rets.corr().values.tolist(), "n": len(rets)}
 
 
 # ----------------------------------------------------------------------------- calendrier
@@ -554,29 +461,131 @@ def calendar(raw, now):
     return out
 
 
-# ----------------------------------------------------------------------------- session US
-def session_profile(intr):
-    prof, stats, price = {}, {}, {}
 
-    def sess(h):
-        return "Asie" if h >= 18 or h < 3 else "Londres" if h < 8 else "New York" if h < 17 else None
+# ----------------------------------------------------------------------------- actualités
+NEWS_FEEDS = [
+    ("Google Actualités", "https://news.google.com/rss/search?q=(Wall%20Street%20OR%20Nasdaq%20OR%20%22Dow%20Jones%22%20OR%20%22S%26P%20500%22%20OR%20Fed%20OR%20%22prix%20de%20l%27or%22%20OR%20p%C3%A9trole%20OR%20%22euro%20dollar%22%20OR%20%22march%C3%A9s%20financiers%22)%20when:2d&hl=fr&gl=FR&ceid=FR:fr"),
+    ("CNBC", "https://www.cnbc.com/id/100003114/device/rss/rss.html"),
+    ("CNBC", "https://www.cnbc.com/id/15839069/device/rss/rss.html"),
+    ("Yahoo Finance", "https://feeds.finance.yahoo.com/rss/2.0/headline?s=%5EGSPC,%5ENDX,%5EDJI,GC%3DF,CL%3DF,EURUSD%3DX&region=US&lang=en-US"),
+]
+# thème -> (mots-clés en minuscules, actifs concernés)
+NEWS_TAGS = {
+    "Fed / taux": (["fed", "fomc", "powell", "warsh", "taux directeur", "banque centrale américaine", "rate cut", "rate hike", "baisse des taux", "hausse des taux", "treasury yield", "rendement obligataire"], ["dow", "ndx", "spx", "gold", "eur"]),
+    "Tech / IA": (["nvidia", "data center", "data centers", "centres de données", "centre de données", "semi-conducteur", "semiconductor", "chip", "puces", "openai", "anthropic", "magnificent", "big tech", "géants de la tech", "microsoft", "alphabet", "apple", "meta", "amazon", "tesla", "broadcom"], ["ndx", "spx"]),
+    "Wall Street": (["wall street", "nasdaq", "dow jones", "s&p 500", "s&p", "bourse de new york", "stock market", "us stocks", "actions américaines"], ["dow", "ndx", "spx"]),
+    "Or": (["l'or", "l’or", "prix de l'or", "métal jaune", "gold", "bullion", "xau", "métaux précieux", "precious metals"], ["gold"]),
+    "Pétrole": (["pétrole", "brent", "wti", "crude", "oil", "opep", "opec", "baril"], ["oil"]),
+    "Euro / BCE": (["euro", "bce", "ecb", "lagarde", "zone euro", "eurozone"], ["eur"]),
+    "Dollar": (["dollar", "billet vert"], ["eur", "gold"]),
+    "Politique US": (["élection", "élections", "election", "elections", "trump", "congrès", "congress", "shutdown", "sénat", "senate", "maison blanche", "white house", "midterm", "mi-mandat"], ["dow", "ndx", "spx", "gold", "eur"]),
+    "Commerce": (["droits de douane", "tarifs douaniers", "tariff", "tariffs", "guerre commerciale", "trade war"], ["dow", "ndx", "spx", "gold"]),
+    "Géopolitique": (["guerre", "war", "iran", "israël", "israel", "russie", "russia", "ukraine", "taïwan", "taiwan", "missile", "attaque", "attack", "sanctions", "conflit"], ["gold", "oil", "spx"]),
+    "Macro US": (["inflation", "cpi", "emploi", "jobs report", "payrolls", "chômage", "unemployment", "pib", "gdp", "récession", "recession", "consommation"], ["dow", "ndx", "spx", "gold", "eur"]),
+}
+STRONG = ["chute", "plonge", "plongeon", "s'effondre", "effondrement", "dégringol", "krach", "panique", "déroute", "flambe", "flambée",
+          "bondit", "s'envole", "envolée", "record", "historique", "choc", "tempête", "débâcle", "lourde", "sell-off", "selloff",
+          "plunge", "plummet", "tumble", "crash", "soar", "surge", "rout", "slump", "sink", "spike", "rally", "breaking", "urgent",
+          "surprise", "emergency", "turmoil", "worst", "best day", "rebondit", "décroche", "vacille", "secoue"]
 
-    for k, t in FUTURES.items():
-        d = pd.DataFrame({"h": intr["High"][t], "l": intr["Low"][t], "c": intr["Close"][t]}).dropna()
-        d["r"] = (d["h"] - d["l"]) / d["c"] * 100
-        d["ret"] = d["c"].pct_change() * 100
-        d = d.dropna()
-        d["hour"] = d.index.hour
-        prof[k] = d.groupby("hour")["r"].mean().reindex(range(24)).tolist()
-        d["session"] = d["hour"].map(sess)
-        d["tday"] = (d.index + pd.Timedelta(hours=6)).date
-        g = d.dropna(subset=["session"]).groupby(["tday", "session"])
-        ret = g["ret"].sum().unstack()
-        rng = ((g["h"].max() - g["l"].min()) / g["c"].mean() * 100).unstack()
-        price[k] = d["c"].iloc[-1]
-        stats[k] = [{"session": s, "perf": ret[s].mean(), "up": (ret[s] > 0).mean() * 100, "range": rng[s].mean()}
-                    for s in ("Asie", "Londres", "New York") if s in ret]
-    return {"hourly": prof, "sessions": stats, "price": price}
+
+# Articles de conseil / listes d'actions sans valeur d'information immédiate
+NOISE = re.compile(r"(want to invest|here'?s (what|why|how|the)|should you|stocks? to buy|to buy (now|today)|buy (now|before)|"
+                   r"is it time|best (stocks?|etfs?)|top \d|\d+ (stocks?|reasons)|prediction|billionaire|dividend|401\(k\)|"
+                   r"retire|millionaire|passive income|history says|motley|could make you|no-brainer|forever)", re.I)
+
+
+def _kw_hit(text, kw):
+    return re.search(r"(?<![\w])" + re.escape(kw) + r"(?![\w])", text) is not None
+
+
+def load_news():
+    import xml.etree.ElementTree as ET
+    from email.utils import parsedate_to_datetime
+
+    def one(feed):
+        src, url = feed
+        try:
+            r = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
+            out = []
+            for it in ET.fromstring(r.content).iter("item"):
+                title = (it.findtext("title") or "").strip()
+                source = src
+                if src == "Google Actualités":
+                    source = (it.findtext("source") or "").strip() or src
+                    title = re.sub(r"\s+-\s+[^-]+$", "", title)
+                try:
+                    ts = parsedate_to_datetime(it.findtext("pubDate")).astimezone(ZoneInfo("UTC"))
+                except Exception:
+                    continue
+                out.append({"title": title, "source": source, "link": it.findtext("link") or "", "ts": ts,
+                            "lang": "fr" if src == "Google Actualités" else "en"})
+            return out
+        except Exception:
+            return []
+
+    with ThreadPoolExecutor(4) as ex:
+        return [x for lst in ex.map(one, NEWS_FEEDS) for x in lst]
+
+
+def news(raw, now):
+    hours = 60 if now.weekday() >= 5 or now.weekday() == 0 and now.hour < 12 else 30
+    cutoff = now.astimezone(ZoneInfo("UTC")) - timedelta(hours=hours)
+    seen, items = set(), []
+    for n in sorted(raw, key=lambda x: x["ts"], reverse=True):
+        if n["ts"] < cutoff or not n["title"]:
+            continue
+        key = re.sub(r"[^a-z0-9]", "", n["title"].lower())[:50]
+        if key in seen or NOISE.search(n["title"]):
+            continue
+        seen.add(key)
+        low = n["title"].lower()
+        tags = [t for t, (kws, _) in NEWS_TAGS.items() if any(_kw_hit(low, k) for k in kws)]
+        if re.search(r"\b(IA|AI)\b", n["title"]) and "Tech / IA" not in tags:
+            tags.append("Tech / IA")
+        if not tags:
+            continue
+        strong = any(w in low for w in STRONG)
+        assets = sorted({a for t in tags for a in NEWS_TAGS[t][1]}, key=MAIN.index)
+        loc = n["ts"].astimezone(PARIS)
+        mins = int((now - n["ts"]).total_seconds() // 60)
+        items.append({"title": n["title"], "source": n["source"], "link": n["link"], "lang": n["lang"],
+                      "time": loc.strftime("%H:%M"), "day": loc.strftime("%d/%m"), "mins": max(mins, 0),
+                      "tags": tags, "assets": assets, "strong": strong})
+    # Les titres forts d'abord parmi les 12 h les plus récentes, puis le reste par ordre chronologique.
+    top = [i for i in items if i["strong"] and i["mins"] < 12 * 60][:6]
+    rest = [i for i in items if i not in top]
+    return (top + rest)[:14]
+
+
+# ----------------------------------------------------------------------------- mouvements anormaux
+def agitation(px, intr, now):
+    """Compare le dernier mouvement de chaque marché à son mouvement habituel."""
+    day, hour = [], []
+    for k in MAIN:
+        s = px[k].dropna()
+        r = (np.log(s).diff() * 100).dropna()
+        typ = r.iloc[-61:-1].abs().mean()
+        mv = pct(s.iloc[-1], s.iloc[-2])
+        ratio = abs(mv) / typ if typ else 0
+        day.append({"key": k, "label": LABEL[k], "move": mv, "ratio": ratio, "typ": typ, "date": s.index[-1].strftime("%d/%m"),
+                    "level": "anormal" if ratio >= 2.5 else "agité" if ratio >= 1.5 else "calme"})
+    if intr is not None:
+        for k, t in FUTURES.items():
+            try:
+                c = intr["Close"][t].dropna()
+            except KeyError:
+                continue
+            if len(c) < 100 or (now - c.index[-1]) > timedelta(hours=3):
+                continue
+            hr = (c.pct_change() * 100).dropna()
+            typ = hr.iloc[-500:-1].abs().mean()
+            last = hr.iloc[-1]
+            ratio = abs(last) / typ if typ else 0
+            if ratio >= 3.5:
+                hour.append({"key": k, "label": LABEL[k], "move": last, "ratio": ratio, "at": c.index[-1].strftime("%H:%M"),
+                             "at_paris": c.index[-1].astimezone(PARIS).strftime("%H:%M")})
+    return {"day": day, "hour": sorted(hour, key=lambda x: -x["ratio"])}
 
 
 # ----------------------------------------------------------------------------- API
@@ -589,17 +598,20 @@ def build(force=False):
     except Exception:
         cal = []
     try:
-        intr = cached("intr", 600, load_intraday, force)
-        prof = session_profile(intr)
+        intr = cached("intr", 300, load_intraday, force)
     except Exception:
-        prof = None
+        intr = None
+    try:
+        nw = news(cached("news", 240, load_news, force), now)
+    except Exception:
+        nw = []
     th, totals = themes(px, fred)
     cards = asset_cards(px)
     for c in cards:
         c["macro"] = totals[c["key"]]
     return clean({"updated": now.strftime("%d/%m/%Y %H:%M"), "session": session_info(now), "assets": cards,
-                  "drivers": drivers(px, fred), "themes": th, "totals": totals, "corr": correlations(px),
-                  "calendar": calendar(cal, now), "profile": prof, "labels": {k: LABEL[k] for k in MAIN}})
+                  "themes": th, "totals": totals, "corr": correlations(px), "news": nw,
+                  "agitation": agitation(px, intr, now), "calendar": calendar(cal, now), "labels": {k: LABEL[k] for k in MAIN}})
 
 
 app = Flask(__name__, static_folder=None)
@@ -607,7 +619,9 @@ app = Flask(__name__, static_folder=None)
 
 @app.get("/")
 def index():
-    return send_from_directory(BASE / "static", "index.html")
+    resp = send_from_directory(BASE / "static", "index.html")
+    resp.headers["Cache-Control"] = "no-store"  # toujours servir la dernière version de la page
+    return resp
 
 
 @app.get("/api/dashboard")

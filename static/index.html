@@ -244,6 +244,52 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
   .legend span:last-child{margin-left:0}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+/* ---------- en ce moment ---------- */
+#flash .card{margin-bottom:12px}
+.halert{display:flex;gap:12px;align-items:center;border-radius:12px;padding:12px 16px;margin-bottom:12px;background:var(--down-bg);border:1px solid rgba(239,68,68,.4)}
+.halert b{font-size:15px}
+.halert .muted{font-size:12px}
+.agit{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:10px}
+@media(max-width:1100px){.agit{grid-template-columns:repeat(3,1fr)}}
+.ag{border-radius:10px;padding:10px 12px;background:var(--panel2);border:1px solid transparent}
+.ag .n{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:6px}
+.ag .m{font-size:17px;font-weight:600;margin:2px 0}
+.ag .r{font-size:11.5px;font-weight:600}
+.ag.agité{border-color:rgba(245,158,11,.45)} .ag.agité .r{color:var(--warn)}
+.ag.anormal{border-color:rgba(239,68,68,.6);background:var(--down-bg)} .ag.anormal .r{color:var(--down)}
+.ag.calme .r{color:var(--faint)}
+.nw{display:grid;grid-template-columns:62px 1fr;gap:12px;padding:11px 0;border-top:1px solid var(--line)}
+.nw:first-child{border-top:0}
+.nw .t{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--muted);line-height:1.35}
+.nw .t small{display:block;font-family:Inter;font-size:10.5px;color:var(--faint)}
+.nw a{font-weight:600;font-size:14px;line-height:1.4;display:block}
+.nw a:hover{color:var(--accent)}
+.nw.strong a::before{content:"⚡ ";}
+.nw.strong{background:linear-gradient(90deg,rgba(239,68,68,.08),transparent 60%);margin:0 -18px;padding-left:18px;padding-right:18px}
+.nw .meta{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;align-items:center;font-size:11px;color:var(--faint)}
+.nw .meta span.tag{background:var(--panel2);color:var(--muted);padding:1px 7px;border-radius:6px;font-weight:600}
+.nw .meta span.lang{border:1px solid var(--line);padding:0 5px;border-radius:5px;font-size:10px}
+/* ---------- corrélations ---------- */
+.ctab-wrap{overflow-x:auto}
+.ctab{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px;font-size:12.5px}
+.ctab col.c0{width:80px}
+.ctab th{color:var(--muted);font-weight:600;padding:4px 6px;white-space:nowrap}
+.ctab th.r{text-align:right}
+.ctab td{text-align:center;padding:10px 4px;border-radius:7px;font-weight:600;color:var(--text);white-space:nowrap}
+.ctab td.self{background:var(--panel2);color:var(--faint)}
+.ctab .sm{display:none}
+.clegend{display:flex;align-items:center;gap:10px;justify-content:center;margin-top:12px;font-size:11.5px;color:var(--muted)}
+.clegend i{width:180px;max-width:40vw;height:8px;border-radius:4px;background:linear-gradient(90deg,rgba(239,68,68,.9),rgba(239,68,68,.12) 45%,rgba(139,149,167,.12) 50%,rgba(34,197,94,.12) 55%,rgba(34,197,94,.9))}
+@media(max-width:760px){
+  .agit{grid-template-columns:repeat(2,1fr)}
+  .nw{grid-template-columns:50px 1fr;gap:10px}
+  .nw.strong{margin:0 -15px;padding-left:15px;padding-right:15px}
+  .ctab{font-size:11.5px;border-spacing:3px}
+  .ctab col.c0{width:38px}
+  .ctab th{padding:4px 0;font-size:11px}
+  .ctab .lg{display:none} .ctab .sm{display:inline}
+  .ctab td{padding:9px 2px}
+}
 </style>
 </head>
 <body>
@@ -252,8 +298,8 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 <header><div class="bar">
   <div class="brand"><i></i>US Session &amp; Gold</div>
   <nav>
-    <a href="#overview">Marchés</a><a href="#economy">Économie → Actifs</a><a href="#corr">Corrélations</a>
-    <a href="#calendar">Calendrier</a><a href="#session">Session US</a>
+    <a href="#flash">En ce moment</a><a href="#overview">Marchés</a><a href="#economy">Économie → Actifs</a>
+    <a href="#corr">Corrélations</a><a href="#calendar">Calendrier</a>
   </nav>
   <div class="clocks">
     <span><span class="lbl">New York</span> NY <b class="num" id="ny">--:--</b></span>
@@ -264,6 +310,19 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 
 <main>
 <div class="snapnote" id="snapnote"></div>
+<section id="flash">
+  <div class="head"><div><h2>En ce moment
+      <span class="tip l" tabindex="0">?<span class="bubble">
+        <p><b>Agitation</b> : la variation de la dernière séance comparée à la variation moyenne des 60 séances précédentes. « 2,5× » veut dire que le marché a bougé 2,5 fois plus que d'habitude.</p>
+        <p><b>Calme</b> sous 1,5× · <b>agité</b> de 1,5× à 2,5× · <b>anormal</b> au-delà.</p>
+        <p><b>Alerte « dernière heure »</b> : apparaît quand une bougie d'une heure bouge au moins 3,5 fois plus que la moyenne. C'est souvent le signe d'une nouvelle importante.</p>
+        <p><b>Actualités</b> : titres des dernières 24 à 30 h (Google Actualités, CNBC, Yahoo Finance) qui concernent vos 6 marchés. ⚡ = mouvement fort annoncé dans le titre.</p></span></span></h2>
+    <div class="sub">Mouvements anormaux et actualités qui concernent vos marchés.</div></div></div>
+  <div id="hourAlerts"></div>
+  <div class="card agit-card"><div class="label">Agitation de la dernière séance</div><div class="agit" id="agit"></div></div>
+  <div class="card news-card"><div class="label">Actualités</div><div id="news"></div></div>
+</section>
+
 <section id="overview">
   <div class="session">
     <div class="card">
@@ -292,9 +351,6 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
   <div class="head"><div><h2>Les 6 marchés suivis</h2><div class="sub" id="asof"></div></div></div>
   <div class="grid g3" id="assets"></div><div class="dots" id="dots-assets"></div>
 
-  <div class="head" style="margin-top:28px"><div><h2>Ce qui fait bouger ces marchés</h2>
-    <div class="sub">Les variables macro-financières qui pilotent les indices US et l'or au quotidien.</div></div></div>
-  <div class="grid g6" id="drivers"></div><div class="dots" id="dots-drivers"></div>
 </section>
 
 <section id="economy">
@@ -319,22 +375,15 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 </section>
 
 <section id="corr">
-  <div class="head">
-    <div><h2>Corrélations</h2><div class="sub">Comment les marchés bougent les uns par rapport aux autres. +1 : même sens, −1 : sens opposé, 0 : aucun lien.</div></div>
-    <div class="seg" id="wseg"><button data-w="20">20 jours</button><button data-w="60" class="on">60 jours</button><button data-w="120">120 jours</button></div>
-  </div>
-  <div class="grid g3" id="insights"></div><div class="dots" id="dots-insights"></div><div style="height:14px"></div>
-  <div class="grid g2">
-    <div class="card"><div class="label" style="margin-bottom:6px">Corrélation de l'or avec chaque marché</div>
-      <div class="bars" id="bars"></div>
-      <div class="scale"><span></span><div><span>−1 opposé</span><span>0</span><span>+1 même sens</span></div><span></span></div>
-    </div>
-    <div class="card"><div class="label" style="margin-bottom:10px">Matrice complète</div><div style="overflow-x:auto"><table class="heat" id="heat"></table></div></div>
-  </div>
-  <div class="card" style="margin-top:14px">
-    <div class="label">Évolution de la corrélation de l'or (glissante) sur 1 an</div>
-    <div style="height:320px;margin-top:10px"><canvas id="rollc"></canvas></div>
-  </div>
+  <div class="head"><div><h2>Corrélations
+      <span class="tip l" tabindex="0">?<span class="bubble">
+        <p>La corrélation indique si deux marchés ont tendance à bouger <b>dans le même sens</b> (positive) ou <b>en sens opposé</b> (négative).</p>
+        <p>Plus la couleur est <b>intense</b>, plus le lien est fort. Une case pâle ou « faible » signifie qu'il n'y a pas de lien fiable en ce moment.</p>
+        <p>Exemple : Or / Dollar négative → quand le dollar monte, l'or a tendance à baisser.</p>
+        <p>Calcul sur les variations journalières des 60 dernières séances. Ces liens changent avec le contexte : une case qui change de couleur signale un changement de régime.</p></span></span></h2>
+    <div class="sub">Vert : même sens · Rouge : sens opposé · Intensité : force du lien.</div></div></div>
+  <div class="card"><div class="ctab-wrap"><table class="ctab" id="ctab"></table></div>
+    <div class="clegend"><span>Forte négative</span><i></i><span>Forte positive</span></div></div>
 </section>
 
 <section id="calendar">
@@ -346,42 +395,10 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
   <div class="cal" id="cal"></div>
 </section>
 
-<section id="session">
-  <div class="head"><div><h2>Comportement pendant la session US</h2>
-    <div class="sub">Calculé sur les 60 derniers jours (contrats futures). Les barres en couleur correspondent à la session de New York (8h–17h).</div></div>
-    <div class="ctrls">
-      <div class="seg" id="aseg"></div>
-      <div class="seg" id="useg"><button data-u="pct" class="on">%</button><button data-u="pts">Points</button><button data-u="usd">$</button></div>
-      <span class="tip r" tabindex="0">?<span class="bubble">
-        <p><b>%</b> : mouvement en pourcentage du prix. Utile pour comparer les actifs entre eux.</p>
-        <p><b>Points</b> : mouvement dans l'unité de cotation. Points d'indice pour le Dow, le Nasdaq et le S&amp;P 500, dollars par once pour l'or, dollars par baril pour le pétrole, pips pour l'EUR/USD.</p>
-        <p><b>$</b> : gain ou perte pour <b>1 lot / 1 contrat standard</b>. Or : 100 onces. Pétrole : 1 000 barils. EUR/USD : 100 000 € (10 $ par pip). Dow : future mini YM (5 $ par point). Nasdaq : E-mini NQ (20 $ par point). S&amp;P 500 : E-mini ES (50 $ par point).</p>
-        <p>La taille d'un lot varie selon les courtiers et les CFD : vérifiez celle de votre plateforme.</p></span></span>
-    </div>
-  </div>
-  <div class="grid g2">
-    <div class="card"><div class="label" style="margin-bottom:10px">Amplitude moyenne par heure (heure de New York)
-      <span class="tip l" tabindex="0">?<span class="bubble">
-        <p>Chaque barre indique de combien le marché bouge en moyenne pendant cette heure : l'écart entre le plus haut et le plus bas de la bougie d'une heure.</p>
-        <p><b>À quoi ça sert</b></p>
-        <p>1. <b>Repérer les heures actives</b> : les pics à 8h–10h NY (14h–16h Paris) correspondent aux statistiques de 8:30 et à l'ouverture de Wall Street.</p>
-        <p>2. <b>Placer ses stops</b> : un stop plus petit que l'amplitude habituelle de l'heure risque d'être touché par le simple bruit du marché.</p>
-        <p>3. <b>Choisir ses horaires</b> : trader quand le marché bouge, ou éviter les heures agitées si l'on cherche du calme.</p></span></span></div>
-      <div style="height:280px"><canvas id="hourc"></canvas></div><div class="basis" id="basis"></div></div>
-    <div class="card"><div class="label" style="margin-bottom:10px">Statistiques par session
-      <span class="tip r" tabindex="0">?<span class="bubble">
-        <p><b>Amplitude</b> : écart moyen entre le plus haut et le plus bas atteints pendant la session.</p>
-        <p><b>Perf. moyenne</b> : variation moyenne entre l'ouverture et la clôture de la session. Positive : la session a eu tendance à monter.</p>
-        <p><b>Sessions haussières</b> : part des jours où l'actif a fini la session plus haut qu'il ne l'avait commencée. Par exemple, 40 % signifie que la session a fini en hausse 4 jours sur 10.</p>
-        <p>Ces chiffres décrivent les 60 derniers jours. Ils reflètent le contexte récent et ne constituent pas une règle.</p></span></span></div>
-      <div class="sstats" id="sstats"></div>
-      <p class="muted" style="font-size:12px;margin-top:12px">Asie : 18:00–03:00 · Londres : 03:00–08:00 · New York : 08:00–17:00 (heure NY).</p></div>
-  </div>
-</section>
 </main>
-<nav class="tabbar" id="tabbar"><a href="#overview" data-sec="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg><span>Marchés</span></a><a href="#economy" data-sec="economy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V10M10 21V10M14 21V10M19 21V10M2 10l10-6 10 6"/></svg><span>Économie</span></a><a href="#corr" data-sec="corr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="12" r="5"/><circle cx="16" cy="12" r="5"/></svg><span>Corrél.</span></a><a href="#calendar" data-sec="calendar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Agenda</span></a><a href="#session" data-sec="session"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Session</span></a></nav>
+<nav class="tabbar" id="tabbar"><a href="#flash" data-sec="flash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg><span>Flash</span></a><a href="#overview" data-sec="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg><span>Marchés</span></a><a href="#economy" data-sec="economy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V10M10 21V10M14 21V10M19 21V10M2 10l10-6 10 6"/></svg><span>Économie</span></a><a href="#corr" data-sec="corr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="12" r="5"/><circle cx="16" cy="12" r="5"/></svg><span>Corrél.</span></a><a href="#calendar" data-sec="calendar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Agenda</span></a></nav>
 
-<footer>Sources : Yahoo Finance (prix ; or = future COMEX GC=F, très proche du spot XAUUSD), FRED / Réserve fédérale de St. Louis (macro), ForexFactory (calendrier).<br>
+<footer>Sources : Yahoo Finance (prix ; or = future COMEX GC=F, très proche du spot XAUUSD), FRED / Réserve fédérale de St. Louis (macro), ForexFactory (calendrier), Google Actualités, CNBC et Yahoo Finance (actualités).<br>
 Outil d'analyse et de pédagogie : les lectures sont des relations économiques habituelles et ne constituent pas un conseil en investissement. <span id="upd"></span></footer>
 
 <script>
@@ -393,33 +410,7 @@ const fr = (v, d=2) => v==null ? "—" : v.toLocaleString("fr-FR", {minimumFract
 const sg = (v, d=2, u=" %") => v==null ? "—" : (v>0?"+":"") + fr(v,d) + u;
 const cls = v => v>0 ? "up" : v<0 ? "down" : "muted";
 const LOADED = Date.now();
-let D, W = 60, IMP = "Medium", ASSET = "gold", UNIT = "pct", CALDAY = null, charts = {};
-// Unités de cotation et valeur d'un lot / contrat standard
-const SPEC = {
-  dow:  {pts:"pts", mult:5,    lot:"future mini Dow YM : 5 $ par point"},
-  ndx:  {pts:"pts", mult:20,   lot:"E-mini Nasdaq NQ : 20 $ par point"},
-  spx:  {pts:"pts", mult:50,   lot:"E-mini S&P 500 ES : 50 $ par point"},
-  gold: {pts:"$/oz", mult:100, lot:"1 lot = 100 onces : 100 $ par dollar de mouvement"},
-  oil:  {pts:"$/baril", mult:1000, lot:"1 lot = 1 000 barils : 1 000 $ par dollar de mouvement"},
-  eur:  {pts:"pips", mult:10, pip:0.0001, lot:"1 lot = 100 000 € : 10 $ par pip"},
-};
-function conv(pct, k){
-  if(pct == null) return null;
-  if(UNIT === "pct") return pct;
-  let pts = pct / 100 * D.profile.price[k];
-  if(SPEC[k].pip) pts = pts / SPEC[k].pip;
-  return UNIT === "pts" ? pts : pts * SPEC[k].mult;
-}
-function unitTxt(k){ return UNIT === "pct" ? "%" : UNIT === "pts" ? SPEC[k].pts : "$ / lot"; }
-function fmtU(v, k, signed){
-  if(v == null) return "—";
-  const d = UNIT === "pct" ? (Math.abs(v) < .1 ? 3 : 2) : UNIT === "usd" ? 0 : (k === "eur" ? 1 : Math.abs(v) < 10 ? 2 : 1);
-  const u = UNIT === "pct" ? " %" : UNIT === "pts" ? " " + SPEC[k].pts : " $";
-  return (signed && v > 0 ? "+" : "") + fr(v, d) + u;
-}
-
-Chart.defaults.color = "#8b95a7"; Chart.defaults.font.family = "Inter"; Chart.defaults.borderColor = "#222b3a";
-
+let D, IMP = "Medium", CALDAY = null, charts = {};
 async function load(force){
   if(window.SNAPSHOT){
     D = window.SNAPSHOT; render(); $("#loading").style.display = "none";
@@ -450,8 +441,8 @@ function render(){
   $("#upd").textContent = "· Mis à jour le " + D.updated;
   tick();
   $("#asof").textContent = "Dernière clôture : " + D.assets[0].date + " · variations sur 1 jour, 1 semaine, 1 mois et depuis le 1er janvier";
-  assets(); drivers(); matrix(); corr(); calendar(); session();
-  ["assets","drivers","insights"].forEach(dots);
+  flash(); assets(); matrix(); corrTable(); calendar();
+  dots("assets");
 }
 
 // Heure de New York, Londres et Paris calculées dans le navigateur (toujours à jour, même en version figée)
@@ -529,11 +520,6 @@ function assets(){
   });
 }
 
-function drivers(){
-  $("#drivers").innerHTML = D.drivers.map(d => `<div class="card drv"><div class="label">${d.label}</div>
-    <div class="val num">${d.value}</div><div class="chg ${d.dir>0?"up":d.dir<0?"down":"muted"}">${d.dir>0?"▲":d.dir<0?"▼":"■"} ${d.change}</div><p>${d.note}</p></div>`).join("");
-}
-
 const chip = v => `<span class="chip ${["m2","m1","z","p1","p2"][v+2]}">${["▼▼","▼","—","▲","▲▲"][v+2]}</span>`;
 function matrix(){
   const K = ["dow","ndx","spx","gold","oil","eur"], L = {dow:"Dow",ndx:"Nasdaq",spx:"S&P 500",gold:"Or",oil:"Pétrole",eur:"EUR/USD"};
@@ -547,28 +533,35 @@ function matrix(){
       return `<td class="a" data-l="${L[k]}"><div class="imp"><span class="num ${cls(t.score)}" style="font-size:22px;font-weight:600">${t.score>0?"+":""}${t.score}</span><span class="pill ${tone}">${t.verdict}</span></div></td>`;}).join("")}</tr>`;
 }
 
-function heatColor(v){
-  const a = Math.min(Math.abs(v),1);
-  return v>=0 ? `rgba(34,197,94,${.1+a*.75})` : `rgba(239,68,68,${.1+a*.75})`;
+function corrTable(){
+  const c = D.corr, K = c.order, M = c.matrix;
+  const name = {dow:"Dow",ndx:"Nasdaq",spx:"S&P 500",gold:"Or",oil:"Pétrole",eur:"EUR/USD",dxy:"Dollar"};
+  const cell = (v, i, j) => {
+    if(i === j) return `<td class="self">—</td>`;
+    const a = Math.min(Math.abs(v), 1), weak = a < .2;
+    const bg = weak ? `rgba(139,149,167,.12)` : v > 0 ? `rgba(34,197,94,${.12 + a*.78})` : `rgba(239,68,68,${.12 + a*.78})`;
+    const lg = weak ? "Faible" : v > 0 ? "Positive" : "Négative", sm = weak ? "·" : v > 0 ? "+" : "−";
+    return `<td style="background:${bg};${weak?"color:var(--faint)":""}" title="${name[K[i]]} / ${name[K[j]]} : ${fr(v)}"><span class="lg">${lg}</span><span class="sm">${sm}</span></td>`;
+  };
+  const short = {dow:"Dow",ndx:"Nas",spx:"S&P",gold:"Or",oil:"Pét",eur:"EUR",dxy:"USD"};
+  const hd = k => `<span class="lg">${name[k]}</span><span class="sm">${short[k]}</span>`;
+  $("#ctab").innerHTML = `<colgroup><col class="c0">${K.map(() => "<col>").join("")}</colgroup><tr><th></th>${K.map(k => `<th>${hd(k)}</th>`).join("")}</tr>` +
+    M.map((row, i) => `<tr><th class="r">${hd(K[i])}</th>${row.map((v, j) => cell(v, i, j)).join("")}</tr>`).join("");
 }
-function corr(){
-  const c = D.corr, keys = ["dow","ndx","spx","oil","eur","dxy","us10y","vix"];
-  $("#insights").innerHTML = c.insights.map(i => { const col = {pos:"var(--up)",neg:"var(--down)",warn:"var(--warn)",neutral:"var(--faint)"}[i.tone];
-    return `<div class="card ins"><div class="bar-l" style="background:${col}"></div><div><h4>${i.title}</h4><p>${i.text}</p></div></div>`;}).join("");
-  $("#bars").innerHTML = keys.map(k => { const v = c.gold_vs[k][W], w = Math.abs(v)*50;
-    return `<div class="row"><span>${c.labels[c.order.indexOf(k)]}</span><div class="track"><i style="${v>=0?`left:50%`:`left:${50-w}%`};width:${w}%;background:${v>=0?"var(--up)":"var(--down)"}"></i></div>
-      <b class="num ${cls(v)}" style="text-align:right">${v>0?"+":""}${fr(v)}</b></div>`;}).join("");
-  const m = c.matrix[W];
-  $("#heat").innerHTML = `<tr><th></th>${c.order.map(k => `<th>${HL[k]}</th>`).join("")}</tr>` +
-    m.map((row,i) => `<tr><th class="r">${HL[c.order[i]]}</th>${row.map((v,j) => i===j ? `<td style="background:var(--panel2);color:var(--faint)">—</td>` :
-      `<td style="background:${heatColor(v)};color:${Math.abs(v)>.45?"#fff":"var(--text)"}">${fr(v)}</td>`).join("")}</tr>`).join("");
-  const R = c.rolling[W], names = {spx:"Or / S&P 500", ndx:"Or / Nasdaq", dow:"Or / Dow Jones", dxy:"Or / Dollar", us10y:"Or / Taux 10 ans", oil:"Or / Pétrole", eur:"Or / EUR/USD"};
-  charts.roll?.destroy();
-  charts.roll = new Chart($("#rollc"), {type:"line",
-    data:{labels:c.dates, datasets:Object.keys(R).map(k => ({label:names[k], data:R[k], borderColor:C[k], borderWidth:k==="dxy"||k==="spx"?2.2:1.4, pointRadius:0, tension:.2, hidden:["dow","us10y","oil"].includes(k)}))},
-    options:{maintainAspectRatio:false, interaction:{mode:"index",intersect:false},
-      plugins:{legend:{position:"bottom", labels:{usePointStyle:true, boxWidth:8}}},
-      scales:{y:{min:-1,max:1, grid:{color:c => c.tick.value===0?"#5b6577":"#1a2130"}}, x:{ticks:{maxTicksLimit:10}, grid:{display:false}}}}});
+
+function flash(){
+  const A = D.agitation, ago = m => m < 60 ? `il y a ${m} min` : m < 1440 ? `il y a ${Math.floor(m/60)} h` : `il y a ${Math.floor(m/1440)} j`;
+  $("#hourAlerts").innerHTML = (A.hour || []).map(h => `<div class="halert"><span style="font-size:22px">⚠️</span><div>
+      <b>${h.label} ${sg(h.move)} sur la dernière heure</b><div class="muted">Bougie de ${h.at} NY (${h.at_paris} Paris) · ${fr(h.ratio,1)}× le mouvement horaire habituel</div></div></div>`).join("");
+  $("#agit").innerHTML = A.day.map(a => `<div class="ag ${a.level}">
+      <div class="n"><span>${a.label.replace(" (XAUUSD)","")}</span><span>${a.date}</span></div>
+      <div class="m num ${cls(a.move)}">${sg(a.move)}</div>
+      <div class="r">${a.level === "calme" ? "Calme" : a.level === "agité" ? "Agité" : "Anormal"} · ${fr(a.ratio,1)}× la normale</div></div>`).join("");
+  $("#news").innerHTML = D.news.length ? D.news.map(n => `<div class="nw ${n.strong?"strong":""}">
+      <div class="t">${n.time}<small>${ago(n.mins)}</small></div>
+      <div><a href="${n.link}" target="_blank" rel="noopener">${n.title.replace(/</g,"&lt;")}</a>
+        <div class="meta">${n.tags.map(t => `<span class="tag">${t}</span>`).join("")}<span>${n.source.replace(/</g,"&lt;")}</span>${n.lang==="en"?'<span class="lang">EN</span>':""}</div></div></div>`).join("")
+    : `<div class="empty">Aucune actualité marquante sur vos marchés pour le moment.</div>`;
 }
 
 function calendar(){
@@ -592,38 +585,16 @@ function calendar(){
     </div>`).join("") : `<div class="empty">Aucune annonce à ce niveau d'impact.</div>`}</div>`;}).join("");
 }
 
-function session(){
-  if(!D.profile){ $("#hourc").parentElement.innerHTML = '<div class="empty">Données intraday indisponibles.</div>'; return; }
-  $("#aseg").innerHTML = ["dow","ndx","spx","gold","oil","eur"].map(k => `<button data-a="${k}" class="${k===ASSET?"on":""}">${D.labels[k].replace(" (XAUUSD)","")}</button>`).join("");
-  const h = D.profile.hourly[ASSET].map(v => conv(v, ASSET));
-  const p = D.profile.price[ASSET];
-  $("#basis").innerHTML = UNIT === "pct" ? "Amplitude exprimée en pourcentage du prix." :
-    `Converti au prix actuel (${fr(p, ASSET==="eur"?4:2)})${UNIT==="usd" ? " · base : " + SPEC[ASSET].lot : ""}.`;
-  charts.hour?.destroy();
-  charts.hour = new Chart($("#hourc"), {type:"bar",
-    data:{labels:[...Array(24).keys()].map(i => i+"h"), datasets:[{data:h,
-      backgroundColor:[...Array(24).keys()].map(i => i>=8&&i<17 ? C[ASSET] : "#3a4252"), borderRadius:4}]},
-    options:{maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c => "Amplitude moyenne : " + fmtU(c.raw, ASSET)}}},
-      scales:{y:{title:{display:true,text:"Amplitude moyenne (" + unitTxt(ASSET) + ")"}, grid:{color:"#1a2130"}}, x:{grid:{display:false}}}}});
-  $("#sstats").innerHTML = D.profile.sessions[ASSET].map(s => `<div class="sst ${s.session==="New York"?"hl":""}"><h4>${s.session}</h4>
-    <div class="l">Amplitude <b>${fmtU(conv(s.range, ASSET), ASSET)}</b></div>
-    <div class="l">Perf. moyenne <b class="${cls(s.perf)}">${fmtU(conv(s.perf, ASSET), ASSET, true)}</b></div>
-    <div class="l">Sessions haussières <b>${fr(s.up,0)} %</b></div></div>`).join("");
-}
-
 document.addEventListener("click", e => {
   const row = e.target.closest(".matrix tbody tr");
   if(row && !e.target.closest(".tip")) row.classList.toggle("open");
   const b = e.target.closest("button"); if(!b) return;
   if(b.dataset.day){ CALDAY = b.dataset.day; calendar(); return; }
   if(b.id==="refresh") return window.SNAPSHOT ? location.reload() : load(true);
-  if(b.dataset.w){ W = +b.dataset.w; document.querySelectorAll("#wseg button").forEach(x => x.classList.toggle("on", x===b)); corr(); }
   if(b.dataset.i){ IMP = b.dataset.i; document.querySelectorAll("#iseg button").forEach(x => x.classList.toggle("on", x===b)); calendar(); }
-  if(b.dataset.a){ ASSET = b.dataset.a; session(); }
-  if(b.dataset.u){ UNIT = b.dataset.u; document.querySelectorAll("#useg button").forEach(x => x.classList.toggle("on", x===b)); session(); }
 });
 // Onglet actif de la barre du bas
-const SECS = ["overview","economy","corr","calendar","session"];
+const SECS = ["flash","overview","economy","corr","calendar"];
 function activeTab(){
   let cur = SECS[0];
   for(const id of SECS){ const el = document.getElementById(id); if(el && el.getBoundingClientRect().top < 140) cur = id; }
