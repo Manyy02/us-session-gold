@@ -29,16 +29,23 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      # Copie de secours du calendrier ForexFactory (la source limite les requêtes).
+      # Mémoire entre deux exécutions : copie de secours du calendrier ForexFactory
+      # et liste des alertes déjà envoyées (pour ne jamais notifier deux fois).
       - uses: actions/cache@v4
         with:
-          path: calendar_backup.json
-          key: calendar-${{ github.run_id }}
-          restore-keys: calendar-
+          path: |
+            calendar_backup.json
+            notify_state.json
+          key: state-${{ github.run_id }}
+          restore-keys: state-
       - name: Générer la page avec les données du moment
         run: |
           for i in 1 2 3; do python export_artifact.py --pages && break; echo "Nouvel essai dans 30 s"; sleep 30; done
           test -s site/index.html
+      - name: Notifications téléphone (ntfy)
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: python notify.py
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site

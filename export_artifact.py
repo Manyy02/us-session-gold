@@ -41,4 +41,6 @@ html = html[:i] + snap + html[i:]
 out = BASE / ("site/index.html" if PAGES else "dist/us-session-gold.html")
 out.parent.mkdir(exist_ok=True)
 out.write_text(html)
+if PAGES:
+    (BASE / "site" / "data.json").write_text(json.dumps(data, ensure_ascii=False))  # lu par notify.py
 print(f"{out.relative_to(BASE)} · {len(html) / 1024:.0f} Ko · données du {data['updated']}")
