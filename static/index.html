@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>US Session & Gold</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0a0e15; --panel:#111722; --panel2:#161d2a; --line:#222b3a; --text:#e6e9ef; --muted:#8b95a7; --faint:#5b6577;
+  --up:#22c55e; --up-bg:rgba(34,197,94,.13); --down:#ef4444; --down-bg:rgba(239,68,68,.13);
+  --warn:#f59e0b; --warn-bg:rgba(245,158,11,.13); --neu-bg:rgba(139,149,167,.12);
+  --gold:#e8b931; --dow:#60a5fa; --ndx:#a78bfa; --spx:#34d399; --accent:#e8b931;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font:14px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.num{font-family:"JetBrains Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+a{color:inherit;text-decoration:none}
+
+/* barre du haut */
+header{position:sticky;top:0;z-index:20;background:rgba(10,14,21,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.bar{max-width:1400px;margin:auto;padding:12px 24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.brand{font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px}
+.brand i{width:10px;height:10px;border-radius:50%;background:var(--gold);box-shadow:0 0 12px var(--gold)}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav a{padding:6px 12px;border-radius:8px;color:var(--muted);font-weight:500;font-size:13px}
+nav a:hover{background:var(--panel2);color:var(--text)}
+.clocks{margin-left:auto;display:flex;gap:16px;align-items:center;color:var(--muted);font-size:13px}
+.clocks b{color:var(--text)}
+button{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font:500 13px Inter;cursor:pointer}
+button:hover{border-color:var(--faint)}
+button.on{background:var(--accent);color:#111;border-color:var(--accent)}
+
+main{max-width:1400px;margin:auto;padding:24px}
+section{margin-bottom:40px;scroll-margin-top:70px}
+h2{font-size:20px;font-weight:700;margin-bottom:4px}
+.sub{color:var(--muted);margin-bottom:16px;font-size:13px}
+.head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.head .sub{margin:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+.grid{display:grid;gap:14px}
+.grid>*,.session>*{min-width:0}
+.matrix,.matrix tbody,.matrix tfoot{max-width:100%}
+@media(max-width:900px){.matrix,.matrix tbody,.matrix tfoot{display:block;width:100%}}
+.g4{grid-template-columns:repeat(4,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g6{grid-template-columns:repeat(6,1fr)} .g2{grid-template-columns:1fr 1fr}
+@media(max-width:1100px){.g4,.g6{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:1fr}}
+@media(max-width:640px){.g4,.g6,.g2{grid-template-columns:1fr} main{padding:16px} .bar{padding:10px 16px} .clocks{margin-left:0}}
+.label{color:var(--muted);font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.04em}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.pos{color:var(--up);background:var(--up-bg)} .neg{color:var(--down);background:var(--down-bg)}
+.warn{color:var(--warn);background:var(--warn-bg)} .neutral{color:var(--muted);background:var(--neu-bg)}
+.up{color:var(--up)} .down{color:var(--down)} .muted{color:var(--muted)}
+
+/* session */
+.session{display:grid;grid-template-columns:1.2fr 2fr;gap:14px;margin-bottom:14px}
+@media(max-width:1100px){.session{grid-template-columns:1fr}}
+.status{display:flex;align-items:center;gap:12px;font-size:18px;font-weight:700;margin:6px 0 14px}
+.dot{width:12px;height:12px;border-radius:50%;flex:none}
+.cds{display:flex;gap:10px;flex-wrap:wrap}
+.cd{background:var(--panel2);border-radius:10px;padding:8px 12px;flex:1;min-width:120px}
+.cd .num{font-size:18px}
+.timeline{position:relative;height:46px;margin:22px 0 6px;border-radius:8px;overflow:hidden;display:flex}
+.timeline div{height:100%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#0a0e15}
+.ticks{position:relative;height:16px;color:var(--faint);font-size:11px}
+.ticks span{position:absolute;transform:translateX(-50%)}
+.now{position:absolute;top:14px;bottom:18px;width:2px;background:#fff;box-shadow:0 0 8px #fff}
+.now::after{content:"maintenant";position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:10px;color:#fff;white-space:nowrap}
+.keytimes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+@media(max-width:640px){.keytimes{grid-template-columns:1fr}}
+.kt{font-size:12px;color:var(--muted)} .kt b{color:var(--text);font-family:"JetBrains Mono";font-weight:500}
+
+/* cartes actifs */
+.asset{position:relative;overflow:hidden}
+.asset::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--c)}
+.asset .top{display:flex;justify-content:space-between;align-items:center}
+.asset .name{font-weight:600;display:flex;align-items:center;gap:8px}
+.asset .price{font-size:28px;font-weight:600;margin:6px 0 2px}
+.asset .d1{font-size:14px;font-weight:600}
+.perfs{display:flex;gap:6px;margin:12px 0}
+.perf{flex:1;background:var(--panel2);border-radius:8px;padding:6px 8px;text-align:center}
+.perf small{display:block;color:var(--muted);font-size:11px}
+.perf span{font-size:13px;font-weight:600}
+.spark{height:70px;margin:4px -4px}
+.asset .foot{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:12px}
+
+/* moteurs */
+.drv .val{font-size:20px;font-weight:600;margin:4px 0 0}
+.drv .chg{font-size:12px;font-weight:600}
+.drv p{color:var(--muted);font-size:12px;margin-top:8px;line-height:1.4}
+
+/* matrice */
+.matrix{width:100%;border-collapse:separate;border-spacing:0}
+.matrix th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:0 12px 12px;text-transform:uppercase;letter-spacing:.04em}
+.matrix th.a{text-align:center;width:88px}
+.matrix td{padding:16px 12px;border-top:1px solid var(--line);vertical-align:top}
+.theme-name{display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px}
+.theme-name .ic{font-size:20px}
+.theme-expl{color:var(--muted);font-size:13px;margin-top:6px;max-width:520px;line-height:1.45}
+.figs{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.fig{background:var(--panel2);border-radius:8px;padding:5px 10px;font-size:12px}
+.fig b{font-family:"JetBrains Mono";font-weight:500}
+.fig small{color:var(--faint);margin-left:4px}
+.imp{display:flex;flex-direction:column;align-items:center;gap:4px}
+.chip{width:56px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;letter-spacing:-2px}
+.chip.p2{background:#16a34a;color:#fff}.chip.p1{background:var(--up-bg);color:var(--up)}
+.chip.z{background:var(--neu-bg);color:var(--faint);letter-spacing:0}
+.chip.m1{background:var(--down-bg);color:var(--down)}.chip.m2{background:#dc2626;color:#fff}
+.matrix tfoot td{border-top:2px solid var(--faint);padding-top:16px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:14px;align-items:center}
+.legend .chip{width:34px;height:22px;font-size:12px}
+@media(max-width:900px){
+  .matrix thead{display:none}.matrix tr{display:block;border-top:1px solid var(--line);padding:14px 0}
+  .matrix td{display:block;border:0;padding:4px 0}
+  .matrix td.a{display:inline-block;width:32%;margin-bottom:8px}
+  .matrix td.a::before{content:attr(data-l);display:block;text-align:center;font-size:11px;color:var(--muted);margin-bottom:4px}
+}
+
+/* corrélations */
+.heat{width:100%;border-collapse:collapse;font-size:12px}
+.heat th{color:var(--muted);font-weight:500;padding:6px;text-align:center;white-space:nowrap}
+.heat th.r{text-align:right}
+.heat td{text-align:center;padding:9px 4px;font-family:"JetBrains Mono";border:2px solid var(--panel);border-radius:6px}
+.bars .row{display:grid;grid-template-columns:120px 1fr 52px;gap:10px;align-items:center;margin:10px 0}
+.track{position:relative;height:14px;background:var(--panel2);border-radius:7px}
+.track::after{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--faint)}
+.track i{position:absolute;top:0;bottom:0;border-radius:7px}
+.scale{display:grid;grid-template-columns:120px 1fr 52px;gap:10px;color:var(--faint);font-size:11px}
+.scale div{display:flex;justify-content:space-between}
+.ins{display:flex;gap:12px}
+.ins .bar-l{width:4px;border-radius:2px;flex:none}
+.ins h4{font-size:14px;margin-bottom:4px}
+.ins p{color:var(--muted);font-size:13px;line-height:1.45}
+.seg{display:inline-flex;background:var(--panel2);border-radius:9px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;padding:5px 12px}
+.seg button.on{background:var(--accent);color:#111}
+
+/* calendrier */
+.cal{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+@media(max-width:1100px){.cal{grid-template-columns:1fr}}
+.day h3{font-size:14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.ev{background:var(--panel2);border-radius:10px;padding:10px 12px;margin-bottom:8px;border-left:3px solid var(--faint)}
+.ev.High{border-left-color:var(--down)} .ev.Medium{border-left-color:var(--warn)} .ev.Low{border-left-color:#eab30855}
+.ev.past{opacity:.45}
+.ev .t{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+.ev .n{font-weight:600;font-size:13px;margin:3px 0}
+.ev .fp{font-size:11px;color:var(--muted)} .ev .fp b{color:var(--text);font-family:"JetBrains Mono";font-weight:500}
+.eff{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
+.eff small{color:var(--faint);font-size:10px;display:block;margin-bottom:4px}
+.eff .chips{display:flex;flex-wrap:wrap;gap:4px}
+.eff span{font-size:11px;padding:1px 7px;border-radius:6px;font-weight:600}
+.empty{color:var(--faint);font-size:12px;padding:10px 0}
+
+/* session profil */
+.sstats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.sst{background:var(--panel2);border-radius:10px;padding:12px}
+.sst h4{font-size:13px;margin-bottom:8px}
+.sst .l{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin:3px 0}
+.sst .l b{color:var(--text);font-family:"JetBrains Mono";font-weight:500}
+.sst.hl{outline:1px solid var(--accent)}
+
+/* bulles d'aide */
+.tip{position:relative;display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;
+  background:var(--panel2);border:1px solid var(--line);color:var(--muted);font:600 11px Inter;cursor:help;vertical-align:middle;margin-left:6px;text-transform:none;letter-spacing:0}
+.tip:hover,.tip:focus{border-color:var(--accent);color:var(--accent);outline:none}
+.tip .bubble{display:none;position:absolute;top:24px;left:50%;transform:translateX(-50%);width:300px;max-width:80vw;z-index:30;
+  background:#1c2433;border:1px solid #2e3a4f;border-radius:10px;padding:12px 14px;color:var(--text);font:400 12.5px/1.5 Inter;text-align:left;
+  box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.tip.r .bubble{left:auto;right:-8px;transform:none}
+.tip.l .bubble{left:-8px;transform:none}
+.tip:hover .bubble,.tip:focus .bubble,.tip:focus-within .bubble{display:block}
+.bubble b{color:var(--accent);font-weight:600}
+.bubble p+p{margin-top:6px}
+.ctrls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.basis{font-size:12px;color:var(--muted);margin-top:10px}
+footer{color:var(--faint);font-size:12px;text-align:center;padding:30px 24px 40px;border-top:1px solid var(--line)}
+#loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--bg);z-index:50;color:var(--muted)}
+.spin{width:34px;height:34px;border:3px solid var(--line);border-top-color:var(--gold);border-radius:50%;animation:s 1s linear infinite}
+@keyframes s{to{transform:rotate(360deg)}}
+/* ---------- mobile ---------- */
+:root{color-scheme:dark}
+html{scroll-behavior:smooth}
+header{top:env(safe-area-inset-top,0px)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:25;background:var(--bg)}
+.tabbar,.daychips,.dots,.mhint,.chev{display:none}
+.snapnote{display:none;background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:10px 14px;font-size:12.5px;margin-bottom:14px}
+.snapnote b{color:var(--text)}
+@media(max-width:760px){
+  main{padding-block:14px calc(96px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .bar{padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));gap:10px;flex-wrap:nowrap}
+  header nav{display:none}
+  .brand{font-size:15px;white-space:nowrap}
+  .clocks{margin-left:auto;gap:10px;font-size:12px}
+  .clocks .lbl{display:none}
+  .clocks>span{white-space:nowrap}
+  #refresh{padding:6px 9px}
+  h2{font-size:18px}
+  section{margin-bottom:30px;scroll-margin-top:62px}
+  .card{padding:15px;border-radius:12px}
+  .status{font-size:16px;margin-bottom:12px}
+  .cd{min-width:0;padding:8px 10px}
+  .cd .num{font-size:15px}
+  .cds{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .cd .label{font-size:11px}
+  .keytimes{grid-template-columns:1fr;gap:4px}
+  .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;gap:2px;background:rgba(14,19,28,.97);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+    border-top:1px solid var(--line);padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
+  .tabbar a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;border-radius:10px;color:var(--faint);font-size:10.5px;font-weight:600}
+  .tabbar a svg{width:22px;height:22px}
+  .tabbar a.act{color:var(--accent);background:rgba(232,185,49,.08)}
+  #assets,#drivers,#insights{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px;scrollbar-width:none;
+    margin-inline:calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding:2px max(16px,env(safe-area-inset-left,0px)) 4px;scroll-padding-inline:max(16px,env(safe-area-inset-left,0px))}
+  #assets::-webkit-scrollbar,#drivers::-webkit-scrollbar,#insights::-webkit-scrollbar{display:none}
+  #assets>*{flex:0 0 86%;scroll-snap-align:start}
+  #drivers>*{flex:0 0 64%;scroll-snap-align:start}
+  #insights>*{flex:0 0 84%;scroll-snap-align:start}
+  .dots{display:flex;justify-content:center;gap:6px;margin-top:10px}
+  .dots i{width:6px;height:6px;border-radius:3px;background:var(--line);transition:width .2s,background .2s}
+  .dots i.on{width:18px;background:var(--accent)}
+  .mhint{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+  .matrix tbody tr{cursor:pointer}
+  .matrix tbody tr .theme-expl,.matrix tbody tr .figs{display:none}
+  .matrix tbody tr.open .theme-expl{display:block}
+  .matrix tbody tr.open .figs{display:flex}
+  .theme-name{flex-wrap:wrap;gap:8px}
+  .chev{display:inline-block;margin-left:auto;color:var(--faint);font-size:18px;transition:transform .2s}
+  .open .chev{transform:rotate(90deg);color:var(--accent)}
+  .chip{width:100%;max-width:64px}
+  .daychips{display:flex;gap:8px;overflow-x:auto;margin-bottom:12px;scrollbar-width:none;margin-inline:calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding-inline:max(16px,env(safe-area-inset-left,0px))}
+  .daychips::-webkit-scrollbar{display:none}
+  .daychips button{flex:none;display:flex;flex-direction:column;align-items:center;padding:7px 14px;line-height:1.3}
+  .daychips button small{font-size:10.5px;opacity:.75}
+  .cal .day:not(.sel){display:none}
+  .ctrls{width:100%}
+  #aseg,#wseg,#iseg{overflow-x:auto;max-width:100%;scrollbar-width:none}
+  #aseg button,#wseg button,#iseg button{flex:none}
+  .sstats{grid-template-columns:1fr}
+  .sst{display:grid;grid-template-columns:90px 1fr;align-items:center;column-gap:10px}
+  .sst h4{grid-row:span 3;margin:0}
+  .heat td{padding:7px 3px;font-size:11px}
+  .bars .row,.scale{grid-template-columns:86px 1fr 46px;font-size:12.5px}
+  .timeline div{font-size:10px}
+  .legend span:last-child{margin-left:0}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div id="loading"><div class="spin"></div>Chargement des marchés, de la macro US et du calendrier…</div>
+
+<header><div class="bar">
+  <div class="brand"><i></i>US Session &amp; Gold</div>
+  <nav>
+    <a href="#overview">Marchés</a><a href="#economy">Économie → Actifs</a><a href="#corr">Corrélations</a>
+    <a href="#calendar">Calendrier</a><a href="#session">Session US</a>
+  </nav>
+  <div class="clocks">
+    <span><span class="lbl">New York</span> NY <b class="num" id="ny">--:--</b></span>
+    <span><span class="lbl">Paris</span> PAR <b class="num" id="paris">--:--</b></span>
+    <button id="refresh" aria-label="Actualiser">↻<span class="lbl"> Actualiser</span></button>
+  </div>
+</div></header>
+
+<main>
+<div class="snapnote" id="snapnote"></div>
+<section id="overview">
+  <div class="session">
+    <div class="card">
+      <div class="label">Statut de la session</div>
+      <div class="status"><span class="dot" id="sdot"></span><span id="slabel"></span></div>
+      <div class="cds" id="cds"></div>
+    </div>
+    <div class="card">
+      <div class="label">Journée de trading (heure de New York)</div>
+      <div style="position:relative">
+        <div class="timeline" id="tl"></div>
+        <div class="ticks" id="ticks"></div>
+        <div class="now" id="nowline"></div>
+      </div>
+      <div class="keytimes">
+        <div class="kt"><b>08:30</b> · 14:30 Paris — CPI, NFP, PIB, ventes au détail</div>
+        <div class="kt"><b>09:30</b> · 15:30 Paris — ouverture de Wall Street</div>
+        <div class="kt"><b>10:00</b> · 16:00 Paris — ISM, JOLTS, confiance</div>
+        <div class="kt"><b>11:30</b> · 17:30 Paris — clôture de Londres</div>
+        <div class="kt"><b>14:00</b> · 20:00 Paris — décisions et minutes du FOMC</div>
+        <div class="kt"><b>16:00</b> · 22:00 Paris — clôture de Wall Street</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="head"><div><h2>Les 6 marchés suivis</h2><div class="sub" id="asof"></div></div></div>
+  <div class="grid g3" id="assets"></div><div class="dots" id="dots-assets"></div>
+
+  <div class="head" style="margin-top:28px"><div><h2>Ce qui fait bouger ces marchés</h2>
+    <div class="sub">Les variables macro-financières qui pilotent les indices US et l'or au quotidien.</div></div></div>
+  <div class="grid g6" id="drivers"></div><div class="dots" id="dots-drivers"></div>
+</section>
+
+<section id="economy">
+  <div class="head"><div><h2>Économie américaine → impact sur chaque actif</h2>
+    <div class="sub">Chaque ligne indique l'état d'un pilier de l'économie US et son effet habituel sur le Dow Jones, le Nasdaq, le S&amp;P 500, l'or, le pétrole et l'EUR/USD.</div></div></div>
+  <div class="card" style="padding:18px 18px 8px">
+    <div class="mhint">Touchez un pilier pour voir l'explication et les chiffres.</div>
+    <table class="matrix">
+      <thead><tr><th>Pilier économique</th><th class="a">Dow Jones</th><th class="a">Nasdaq</th><th class="a">S&amp;P 500</th><th class="a">Or</th><th class="a">Pétrole</th><th class="a">EUR/USD</th></tr></thead>
+      <tbody id="mbody"></tbody>
+      <tfoot id="mfoot"></tfoot>
+    </table>
+    <div class="legend">
+      <span><span class="chip p2" style="display:inline-flex">▲▲</span> très favorable</span>
+      <span><span class="chip p1" style="display:inline-flex">▲</span> favorable</span>
+      <span><span class="chip z" style="display:inline-flex">—</span> neutre</span>
+      <span><span class="chip m1" style="display:inline-flex">▼</span> défavorable</span>
+      <span><span class="chip m2" style="display:inline-flex">▼▼</span> très défavorable</span>
+      <span style="margin-left:auto">Le Dow est plus cyclique, le Nasdaq plus sensible aux taux. Le pétrole suit la demande, l'EUR/USD évolue à l'inverse du dollar.</span>
+    </div>
+  </div>
+</section>
+
+<section id="corr">
+  <div class="head">
+    <div><h2>Corrélations</h2><div class="sub">Comment les marchés bougent les uns par rapport aux autres. +1 : même sens, −1 : sens opposé, 0 : aucun lien.</div></div>
+    <div class="seg" id="wseg"><button data-w="20">20 jours</button><button data-w="60" class="on">60 jours</button><button data-w="120">120 jours</button></div>
+  </div>
+  <div class="grid g3" id="insights"></div><div class="dots" id="dots-insights"></div><div style="height:14px"></div>
+  <div class="grid g2">
+    <div class="card"><div class="label" style="margin-bottom:6px">Corrélation de l'or avec chaque marché</div>
+      <div class="bars" id="bars"></div>
+      <div class="scale"><span></span><div><span>−1 opposé</span><span>0</span><span>+1 même sens</span></div><span></span></div>
+    </div>
+    <div class="card"><div class="label" style="margin-bottom:10px">Matrice complète</div><div style="overflow-x:auto"><table class="heat" id="heat"></table></div></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <div class="label">Évolution de la corrélation de l'or (glissante) sur 1 an</div>
+    <div style="height:320px;margin-top:10px"><canvas id="rollc"></canvas></div>
+  </div>
+</section>
+
+<section id="calendar">
+  <div class="head"><div><h2>Calendrier économique US de la semaine</h2>
+    <div class="sub">Pour chaque annonce : réaction habituelle des marchés si le chiffre dépasse les prévisions. Un chiffre inférieur entraîne l'effet inverse.</div></div>
+    <div class="seg" id="iseg"><button data-i="High">Fort impact</button><button data-i="Medium" class="on">Moyen et +</button><button data-i="Low">Tout</button></div>
+  </div>
+  <div class="daychips" id="daychips"></div>
+  <div class="cal" id="cal"></div>
+</section>
+
+<section id="session">
+  <div class="head"><div><h2>Comportement pendant la session US</h2>
+    <div class="sub">Calculé sur les 60 derniers jours (contrats futures). Les barres en couleur correspondent à la session de New York (8h–17h).</div></div>
+    <div class="ctrls">
+      <div class="seg" id="aseg"></div>
+      <div class="seg" id="useg"><button data-u="pct" class="on">%</button><button data-u="pts">Points</button><button data-u="usd">$</button></div>
+      <span class="tip r" tabindex="0">?<span class="bubble">
+        <p><b>%</b> : mouvement en pourcentage du prix. Utile pour comparer les actifs entre eux.</p>
+        <p><b>Points</b> : mouvement dans l'unité de cotation. Points d'indice pour le Dow, le Nasdaq et le S&amp;P 500, dollars par once pour l'or, dollars par baril pour le pétrole, pips pour l'EUR/USD.</p>
+        <p><b>$</b> : gain ou perte pour <b>1 lot / 1 contrat standard</b>. Or : 100 onces. Pétrole : 1 000 barils. EUR/USD : 100 000 € (10 $ par pip). Dow : future mini YM (5 $ par point). Nasdaq : E-mini NQ (20 $ par point). S&amp;P 500 : E-mini ES (50 $ par point).</p>
+        <p>La taille d'un lot varie selon les courtiers et les CFD : vérifiez celle de votre plateforme.</p></span></span>
+    </div>
+  </div>
+  <div class="grid g2">
+    <div class="card"><div class="label" style="margin-bottom:10px">Amplitude moyenne par heure (heure de New York)
+      <span class="tip l" tabindex="0">?<span class="bubble">
+        <p>Chaque barre indique de combien le marché bouge en moyenne pendant cette heure : l'écart entre le plus haut et le plus bas de la bougie d'une heure.</p>
+        <p><b>À quoi ça sert</b></p>
+        <p>1. <b>Repérer les heures actives</b> : les pics à 8h–10h NY (14h–16h Paris) correspondent aux statistiques de 8:30 et à l'ouverture de Wall Street.</p>
+        <p>2. <b>Placer ses stops</b> : un stop plus petit que l'amplitude habituelle de l'heure risque d'être touché par le simple bruit du marché.</p>
+        <p>3. <b>Choisir ses horaires</b> : trader quand le marché bouge, ou éviter les heures agitées si l'on cherche du calme.</p></span></span></div>
+      <div style="height:280px"><canvas id="hourc"></canvas></div><div class="basis" id="basis"></div></div>
+    <div class="card"><div class="label" style="margin-bottom:10px">Statistiques par session
+      <span class="tip r" tabindex="0">?<span class="bubble">
+        <p><b>Amplitude</b> : écart moyen entre le plus haut et le plus bas atteints pendant la session.</p>
+        <p><b>Perf. moyenne</b> : variation moyenne entre l'ouverture et la clôture de la session. Positive : la session a eu tendance à monter.</p>
+        <p><b>Sessions haussières</b> : part des jours où l'actif a fini la session plus haut qu'il ne l'avait commencée. Par exemple, 40 % signifie que la session a fini en hausse 4 jours sur 10.</p>
+        <p>Ces chiffres décrivent les 60 derniers jours. Ils reflètent le contexte récent et ne constituent pas une règle.</p></span></span></div>
+      <div class="sstats" id="sstats"></div>
+      <p class="muted" style="font-size:12px;margin-top:12px">Asie : 18:00–03:00 · Londres : 03:00–08:00 · New York : 08:00–17:00 (heure NY).</p></div>
+  </div>
+</section>
+</main>
+<nav class="tabbar" id="tabbar"><a href="#overview" data-sec="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg><span>Marchés</span></a><a href="#economy" data-sec="economy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V10M10 21V10M14 21V10M19 21V10M2 10l10-6 10 6"/></svg><span>Économie</span></a><a href="#corr" data-sec="corr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="12" r="5"/><circle cx="16" cy="12" r="5"/></svg><span>Corrél.</span></a><a href="#calendar" data-sec="calendar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Agenda</span></a><a href="#session" data-sec="session"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Session</span></a></nav>
+
+<footer>Sources : Yahoo Finance (prix ; or = future COMEX GC=F, très proche du spot XAUUSD), FRED / Réserve fédérale de St. Louis (macro), ForexFactory (calendrier).<br>
+Outil d'analyse et de pédagogie : les lectures sont des relations économiques habituelles et ne constituent pas un conseil en investissement. <span id="upd"></span></footer>
+
+<script>
+const C = {dow:"#60a5fa", ndx:"#a78bfa", spx:"#34d399", gold:"#e8b931", oil:"#fb923c", eur:"#f472b6", dxy:"#f87171", us10y:"#94a3b8"};
+const HL = {dow:"Dow",ndx:"Nasdaq",spx:"S&P",gold:"Or",oil:"Pétrole",eur:"EUR/USD",dxy:"DXY",us10y:"10 ans",vix:"VIX"};
+const SHORT = {dow:"Dow", ndx:"Nasdaq", spx:"S&P", gold:"Or", oil:"Pétrole", eur:"EUR/USD", usd:"USD"};
+const $ = s => document.querySelector(s);
+const fr = (v, d=2) => v==null ? "—" : v.toLocaleString("fr-FR", {minimumFractionDigits:d, maximumFractionDigits:d});
+const sg = (v, d=2, u=" %") => v==null ? "—" : (v>0?"+":"") + fr(v,d) + u;
+const cls = v => v>0 ? "up" : v<0 ? "down" : "muted";
+const LOADED = Date.now();
+let D, W = 60, IMP = "Medium", ASSET = "gold", UNIT = "pct", CALDAY = null, charts = {};
+// Unités de cotation et valeur d'un lot / contrat standard
+const SPEC = {
+  dow:  {pts:"pts", mult:5,    lot:"future mini Dow YM : 5 $ par point"},
+  ndx:  {pts:"pts", mult:20,   lot:"E-mini Nasdaq NQ : 20 $ par point"},
+  spx:  {pts:"pts", mult:50,   lot:"E-mini S&P 500 ES : 50 $ par point"},
+  gold: {pts:"$/oz", mult:100, lot:"1 lot = 100 onces : 100 $ par dollar de mouvement"},
+  oil:  {pts:"$/baril", mult:1000, lot:"1 lot = 1 000 barils : 1 000 $ par dollar de mouvement"},
+  eur:  {pts:"pips", mult:10, pip:0.0001, lot:"1 lot = 100 000 € : 10 $ par pip"},
+};
+function conv(pct, k){
+  if(pct == null) return null;
+  if(UNIT === "pct") return pct;
+  let pts = pct / 100 * D.profile.price[k];
+  if(SPEC[k].pip) pts = pts / SPEC[k].pip;
+  return UNIT === "pts" ? pts : pts * SPEC[k].mult;
+}
+function unitTxt(k){ return UNIT === "pct" ? "%" : UNIT === "pts" ? SPEC[k].pts : "$ / lot"; }
+function fmtU(v, k, signed){
+  if(v == null) return "—";
+  const d = UNIT === "pct" ? (Math.abs(v) < .1 ? 3 : 2) : UNIT === "usd" ? 0 : (k === "eur" ? 1 : Math.abs(v) < 10 ? 2 : 1);
+  const u = UNIT === "pct" ? " %" : UNIT === "pts" ? " " + SPEC[k].pts : " $";
+  return (signed && v > 0 ? "+" : "") + fr(v, d) + u;
+}
+
+Chart.defaults.color = "#8b95a7"; Chart.defaults.font.family = "Inter"; Chart.defaults.borderColor = "#222b3a";
+
+async function load(force){
+  if(window.SNAPSHOT){
+    D = window.SNAPSHOT; render(); $("#loading").style.display = "none";
+    const n = $("#snapnote"); n.style.display = "block";
+    if(D.mode === "pages"){
+      // Version en ligne : les données sont régénérées toutes les 15 min en séance ; on recharge la page pour les récupérer.
+      $("#refresh").onclick = () => location.reload();
+      n.innerHTML = `Données du <b>${D.updated}</b> (heure de New York) · actualisées toutes les 15 min en séance US, toutes les heures sinon.`;
+      setInterval(() => { if(document.visibilityState === "visible") location.reload(); }, 10*60*1000);
+      document.addEventListener("visibilitychange", () => {
+        if(document.visibilityState === "visible" && Date.now() - LOADED > 10*60*1000) location.reload();
+      });
+    } else {
+      $("#refresh").hidden = true;
+      n.innerHTML = `Version partagée : données figées le <b>${D.updated}</b> (heure de New York). L'horloge, le statut de session et les comptes à rebours restent en temps réel.`;
+    }
+    return;
+  }
+  $("#loading").style.display = "flex";
+  try{
+    const r = await fetch("/api/dashboard" + (force ? "?force=1" : ""));
+    D = await r.json(); render();
+  }catch(e){ $("#loading").innerHTML = "Impossible de charger les données : " + e; return; }
+  $("#loading").style.display = "none";
+}
+
+function render(){
+  $("#upd").textContent = "· Mis à jour le " + D.updated;
+  tick();
+  $("#asof").textContent = "Dernière clôture : " + D.assets[0].date + " · variations sur 1 jour, 1 semaine, 1 mois et depuis le 1er janvier";
+  assets(); drivers(); matrix(); corr(); calendar(); session();
+  ["assets","drivers","insights"].forEach(dots);
+}
+
+// Heure de New York, Londres et Paris calculées dans le navigateur (toujours à jour, même en version figée)
+function zoned(tz){
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US",{timeZone:tz,weekday:"short",hour:"2-digit",minute:"2-digit",hour12:false})
+    .formatToParts(new Date()).map(x => [x.type, x.value]));
+  const wd = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].indexOf(p.weekday), h = +p.hour % 24, m = +p.minute;
+  return {wd, min: h*60 + m, txt: String(h).padStart(2,"0") + ":" + String(m).padStart(2,"0")};
+}
+function sessionNow(){
+  const ny = zoned("America/New_York"), ldn = zoned("Europe/London"), t = ny.min, wd = ny.wd;
+  const london = ldn.wd < 5 && ldn.min >= 480 && ldn.min < 990;
+  let phase, label;
+  if(wd === 5 || (wd === 6 && t < 1080) || (wd === 4 && t >= 1020)){ phase = "closed"; label = "Marchés fermés · réouverture dimanche 18:00 NY (minuit Paris)"; }
+  else if(t >= 1020 && t < 1080){ phase = "closed"; label = "Pause quotidienne des futures (17:00–18:00 NY)"; }
+  else if(wd < 5 && t >= 570 && t < 960){ phase = "us"; label = "Session US ouverte" + (london ? " · chevauchement avec Londres" : ""); }
+  else if(wd < 5 && t >= 480 && t < 570){ phase = "pre"; label = "Pré-ouverture US · fenêtre des statistiques de 8:30"; }
+  else if(london){ phase = "london"; label = "Session de Londres"; }
+  else { phase = "asia"; label = "Session asiatique"; }
+  const until = target => { for(let d = 0; d < 8; d++){ const day = (wd + d) % 7; if(day >= 5) continue; const delta = d*1440 + target - t; if(delta > 0) return delta; } return 0; };
+  return {phase, label, ny: ny.txt, paris: zoned("Europe/Paris").txt, minute_of_day: t,
+    countdowns: [{label:"Statistiques de 8:30", m: until(510)}, {label:"Ouverture de Wall Street", m: until(570)}, {label:"Clôture de Wall Street", m: until(960)}]};
+}
+function tick(){
+  const s = sessionNow();
+  $("#ny").textContent = s.ny; $("#paris").textContent = s.paris;
+  const col = {us:"#22c55e", pre:"#f59e0b", london:"#60a5fa", asia:"#a78bfa", closed:"#5b6577"}[s.phase];
+  $("#sdot").style.background = col; $("#sdot").style.boxShadow = "0 0 10px " + col; $("#slabel").textContent = s.label;
+  $("#cds").innerHTML = s.countdowns.map(c => {
+    const h = Math.floor(c.m/60), m = c.m % 60;
+    return `<div class="cd"><div class="label" style="text-transform:none">${c.label}</div><div class="num">${h>=24?Math.floor(h/24)+" j "+(h%24)+" h":h+" h "+String(m).padStart(2,"0")}</div></div>`;}).join("");
+  timeline(s.minute_of_day);
+}
+
+// Points sous les carrousels mobiles
+function dots(id){
+  const box = document.getElementById(id), d = document.getElementById("dots-" + id);
+  if(!box || !d) return;
+  const n = box.children.length;
+  d.innerHTML = Array.from({length:n}, (_, i) => `<i class="${i?"":"on"}"></i>`).join("");
+  box.onscroll = () => {
+    const w = box.children[0]?.getBoundingClientRect().width + 12 || 1;
+    const i = Math.min(n - 1, Math.round(box.scrollLeft / w));
+    [...d.children].forEach((x, j) => x.classList.toggle("on", j === i));
+  };
+}
+
+function timeline(min){
+  const segs = [["Asie",0,180,"#a78bfa"],["Londres",180,480,"#60a5fa"],["Pré-ouv.",480,570,"#f59e0b"],["Wall Street",570,960,"#22c55e"],["Après-clôture",960,1020,"#2f6f4a"],["Pause",1020,1080,"#3a4252"],["Asie",1080,1440,"#a78bfa"]];
+  $("#tl").innerHTML = segs.map(([n,a,b,c]) => `<div style="width:${(b-a)/14.4}%;background:${c}">${b-a>=90?n:""}</div>`).join("");
+  $("#ticks").innerHTML = [0,3,6,8,9.5,12,16,18,21,24].map(h => `<span style="left:${h/24*100}%">${Math.floor(h)}h${h%1?"30":""}</span>`).join("");
+  $("#nowline").style.left = (min/1440*100) + "%";
+}
+
+function assets(){
+  $("#assets").innerHTML = D.assets.map(a => {
+    const m = a.macro, tone = m.score>0?"pos":m.score<0?"neg":"neutral";
+    const tr = a.trend==="haussière"?"pos":a.trend==="baissière"?"neg":"neutral";
+    return `<div class="card asset" style="--c:${C[a.key]}">
+      <div class="top"><div class="name"><span class="dot" style="width:8px;height:8px;background:${C[a.key]}"></span>${a.label}</div>
+        <span class="pill ${tr}">Tendance ${a.trend}</span></div>
+      <div class="price num">${fr(a.last, a.key==="gold"?1:a.key==="eur"?4:2)}</div>
+      <div class="d1 ${cls(a.d1)}">${sg(a.d1)} <span class="muted" style="font-weight:400">sur la journée</span></div>
+      <div class="perfs">${[["1 sem.",a.w1],["1 mois",a.m1],["Depuis janv.",a.ytd]].map(([l,v]) => `<div class="perf"><small>${l}</small><span class="${cls(v)}">${sg(v,1)}</span></div>`).join("")}</div>
+      <div class="spark"><canvas id="sp-${a.key}"></canvas></div>
+      <div class="foot"><span class="muted">À ${sg(a.from_hi,1,"")} % du plus haut annuel</span>
+        <span class="pill ${tone}">Contexte macro : ${m.verdict}</span></div></div>`;}).join("");
+  D.assets.forEach(a => {
+    const id = "sp-"+a.key; charts[id]?.destroy();
+    charts[id] = new Chart(document.getElementById(id), {type:"line",
+      data:{labels:a.spark.t, datasets:[{data:a.spark.v, borderColor:C[a.key], borderWidth:1.8, pointRadius:0, tension:.25, fill:true,
+        backgroundColor: ctx => { const g = ctx.chart.ctx.createLinearGradient(0,0,0,70); g.addColorStop(0,C[a.key]+"40"); g.addColorStop(1,C[a.key]+"00"); return g; }}]},
+      options:{maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{intersect:false, mode:"index", displayColors:false}},
+        scales:{x:{display:false}, y:{display:false}}}});
+  });
+}
+
+function drivers(){
+  $("#drivers").innerHTML = D.drivers.map(d => `<div class="card drv"><div class="label">${d.label}</div>
+    <div class="val num">${d.value}</div><div class="chg ${d.dir>0?"up":d.dir<0?"down":"muted"}">${d.dir>0?"▲":d.dir<0?"▼":"■"} ${d.change}</div><p>${d.note}</p></div>`).join("");
+}
+
+const chip = v => `<span class="chip ${["m2","m1","z","p1","p2"][v+2]}">${["▼▼","▼","—","▲","▲▲"][v+2]}</span>`;
+function matrix(){
+  const K = ["dow","ndx","spx","gold","oil","eur"], L = {dow:"Dow",ndx:"Nasdaq",spx:"S&P 500",gold:"Or",oil:"Pétrole",eur:"EUR/USD"};
+  $("#mbody").innerHTML = D.themes.map(t => `<tr><td>
+      <div class="theme-name"><span class="ic">${t.icon}</span>${t.name}<span class="pill ${t.tone}">${t.status}</span><span class="chev">›</span></div>
+      <div class="theme-expl">${t.explain}</div>
+      <div class="figs">${t.figures.map(f => `<span class="fig">${f.label} <b>${f.value}</b><small>${f.prev?"préc. "+f.prev:""}</small></span>`).join("")}</div></td>
+      ${K.map(k => `<td class="a" data-l="${L[k]}"><div class="imp">${chip(t.impacts[k])}</div></td>`).join("")}</tr>`).join("");
+  $("#mfoot").innerHTML = `<tr><td><div class="theme-name">Bilan macro</div><div class="theme-expl">Somme des effets de chaque pilier : plus le score est élevé, plus l'environnement économique est porteur pour l'actif.</div></td>
+    ${K.map(k => { const t = D.totals[k], tone = t.score>0?"pos":t.score<0?"neg":"neutral";
+      return `<td class="a" data-l="${L[k]}"><div class="imp"><span class="num ${cls(t.score)}" style="font-size:22px;font-weight:600">${t.score>0?"+":""}${t.score}</span><span class="pill ${tone}">${t.verdict}</span></div></td>`;}).join("")}</tr>`;
+}
+
+function heatColor(v){
+  const a = Math.min(Math.abs(v),1);
+  return v>=0 ? `rgba(34,197,94,${.1+a*.75})` : `rgba(239,68,68,${.1+a*.75})`;
+}
+function corr(){
+  const c = D.corr, keys = ["dow","ndx","spx","oil","eur","dxy","us10y","vix"];
+  $("#insights").innerHTML = c.insights.map(i => { const col = {pos:"var(--up)",neg:"var(--down)",warn:"var(--warn)",neutral:"var(--faint)"}[i.tone];
+    return `<div class="card ins"><div class="bar-l" style="background:${col}"></div><div><h4>${i.title}</h4><p>${i.text}</p></div></div>`;}).join("");
+  $("#bars").innerHTML = keys.map(k => { const v = c.gold_vs[k][W], w = Math.abs(v)*50;
+    return `<div class="row"><span>${c.labels[c.order.indexOf(k)]}</span><div class="track"><i style="${v>=0?`left:50%`:`left:${50-w}%`};width:${w}%;background:${v>=0?"var(--up)":"var(--down)"}"></i></div>
+      <b class="num ${cls(v)}" style="text-align:right">${v>0?"+":""}${fr(v)}</b></div>`;}).join("");
+  const m = c.matrix[W];
+  $("#heat").innerHTML = `<tr><th></th>${c.order.map(k => `<th>${HL[k]}</th>`).join("")}</tr>` +
+    m.map((row,i) => `<tr><th class="r">${HL[c.order[i]]}</th>${row.map((v,j) => i===j ? `<td style="background:var(--panel2);color:var(--faint)">—</td>` :
+      `<td style="background:${heatColor(v)};color:${Math.abs(v)>.45?"#fff":"var(--text)"}">${fr(v)}</td>`).join("")}</tr>`).join("");
+  const R = c.rolling[W], names = {spx:"Or / S&P 500", ndx:"Or / Nasdaq", dow:"Or / Dow Jones", dxy:"Or / Dollar", us10y:"Or / Taux 10 ans", oil:"Or / Pétrole", eur:"Or / EUR/USD"};
+  charts.roll?.destroy();
+  charts.roll = new Chart($("#rollc"), {type:"line",
+    data:{labels:c.dates, datasets:Object.keys(R).map(k => ({label:names[k], data:R[k], borderColor:C[k], borderWidth:k==="dxy"||k==="spx"?2.2:1.4, pointRadius:0, tension:.2, hidden:["dow","us10y","oil"].includes(k)}))},
+    options:{maintainAspectRatio:false, interaction:{mode:"index",intersect:false},
+      plugins:{legend:{position:"bottom", labels:{usePointStyle:true, boxWidth:8}}},
+      scales:{y:{min:-1,max:1, grid:{color:c => c.tick.value===0?"#5b6577":"#1a2130"}}, x:{ticks:{maxTicksLimit:10}, grid:{display:false}}}}});
+}
+
+function calendar(){
+  const lv = {High:["High"], Medium:["High","Medium"], Low:["High","Medium","Low","Holiday"]}[IMP];
+  if(!D.calendar.length){ $("#cal").innerHTML = '<div class="card empty" style="grid-column:1/-1">Calendrier momentanément indisponible : la source (ForexFactory) limite le nombre de requêtes. Il réapparaîtra à la prochaine actualisation automatique.</div>'; return; }
+  const days = D.calendar.filter(d => !["samedi","dimanche"].some(w => d.label.toLowerCase().startsWith(w)));
+  if(!CALDAY || !days.some(d => d.date === CALDAY)){
+    const today = new Intl.DateTimeFormat("en-CA",{timeZone:"America/New_York"}).format(new Date());
+    CALDAY = (days.find(d => d.date >= today) || days[0] || {}).date;
+  }
+  $("#daychips").innerHTML = days.map(d => { const n = d.events.filter(e => lv.includes(e.impact)).length;
+    return `<button data-day="${d.date}" class="${d.date===CALDAY?"on":""}">${d.label.split(" ")[0]}<small>${d.label.split(" ")[1]} · ${n} ann.</small></button>`; }).join("");
+  $("#cal").innerHTML = days.map(d => { const ev = d.events.filter(e => lv.includes(e.impact));
+    return `<div class="card day ${d.date===CALDAY?"sel":""}" ${d.today?'style="outline:1px solid var(--accent)"':""}><h3>${d.label}${d.today?'<span class="pill warn">Aujourd\'hui</span>':""}</h3>
+    ${ev.length ? ev.map(e => `<div class="ev ${e.impact} ${e.past?"past":""}">
+      <div class="t"><span><b class="num" style="color:var(--text)">${e.time_ny}</b> NY · ${e.time_paris} Paris</span><span>${{High:"Fort",Medium:"Moyen",Low:"Faible",Holiday:"Férié"}[e.impact]||""}</span></div>
+      <div class="n" title="${e.original}">${e.title}</div>
+      ${e.forecast||e.previous ? `<div class="fp">Prévu <b>${e.forecast||"—"}</b> · Précédent <b>${e.previous||"—"}</b></div>` : ""}
+      ${e.effects ? `<div class="eff"><small>${e.condition}</small><div class="chips">${["usd","gold","dow","ndx","spx","oil","eur"].map(k => { const v = e.effects[k];
+        return `<span class="${v>0?"pos":v<0?"neg":"neutral"}">${SHORT[k]} ${v>0?"▲":v<0?"▼":"±"}</span>`;}).join("")}</div></div>` : ""}
+    </div>`).join("") : `<div class="empty">Aucune annonce à ce niveau d'impact.</div>`}</div>`;}).join("");
+}
+
+function session(){
+  if(!D.profile){ $("#hourc").parentElement.innerHTML = '<div class="empty">Données intraday indisponibles.</div>'; return; }
+  $("#aseg").innerHTML = ["dow","ndx","spx","gold","oil","eur"].map(k => `<button data-a="${k}" class="${k===ASSET?"on":""}">${D.labels[k].replace(" (XAUUSD)","")}</button>`).join("");
+  const h = D.profile.hourly[ASSET].map(v => conv(v, ASSET));
+  const p = D.profile.price[ASSET];
+  $("#basis").innerHTML = UNIT === "pct" ? "Amplitude exprimée en pourcentage du prix." :
+    `Converti au prix actuel (${fr(p, ASSET==="eur"?4:2)})${UNIT==="usd" ? " · base : " + SPEC[ASSET].lot : ""}.`;
+  charts.hour?.destroy();
+  charts.hour = new Chart($("#hourc"), {type:"bar",
+    data:{labels:[...Array(24).keys()].map(i => i+"h"), datasets:[{data:h,
+      backgroundColor:[...Array(24).keys()].map(i => i>=8&&i<17 ? C[ASSET] : "#3a4252"), borderRadius:4}]},
+    options:{maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c => "Amplitude moyenne : " + fmtU(c.raw, ASSET)}}},
+      scales:{y:{title:{display:true,text:"Amplitude moyenne (" + unitTxt(ASSET) + ")"}, grid:{color:"#1a2130"}}, x:{grid:{display:false}}}}});
+  $("#sstats").innerHTML = D.profile.sessions[ASSET].map(s => `<div class="sst ${s.session==="New York"?"hl":""}"><h4>${s.session}</h4>
+    <div class="l">Amplitude <b>${fmtU(conv(s.range, ASSET), ASSET)}</b></div>
+    <div class="l">Perf. moyenne <b class="${cls(s.perf)}">${fmtU(conv(s.perf, ASSET), ASSET, true)}</b></div>
+    <div class="l">Sessions haussières <b>${fr(s.up,0)} %</b></div></div>`).join("");
+}
+
+document.addEventListener("click", e => {
+  const row = e.target.closest(".matrix tbody tr");
+  if(row && !e.target.closest(".tip")) row.classList.toggle("open");
+  const b = e.target.closest("button"); if(!b) return;
+  if(b.dataset.day){ CALDAY = b.dataset.day; calendar(); return; }
+  if(b.id==="refresh") return window.SNAPSHOT ? location.reload() : load(true);
+  if(b.dataset.w){ W = +b.dataset.w; document.querySelectorAll("#wseg button").forEach(x => x.classList.toggle("on", x===b)); corr(); }
+  if(b.dataset.i){ IMP = b.dataset.i; document.querySelectorAll("#iseg button").forEach(x => x.classList.toggle("on", x===b)); calendar(); }
+  if(b.dataset.a){ ASSET = b.dataset.a; session(); }
+  if(b.dataset.u){ UNIT = b.dataset.u; document.querySelectorAll("#useg button").forEach(x => x.classList.toggle("on", x===b)); session(); }
+});
+// Onglet actif de la barre du bas
+const SECS = ["overview","economy","corr","calendar","session"];
+function activeTab(){
+  let cur = SECS[0];
+  for(const id of SECS){ const el = document.getElementById(id); if(el && el.getBoundingClientRect().top < 140) cur = id; }
+  if(innerHeight + scrollY >= document.body.scrollHeight - 4) cur = SECS[SECS.length - 1];
+  document.querySelectorAll(".tabbar a").forEach(a => a.classList.toggle("act", a.dataset.sec === cur));
+}
+addEventListener("scroll", activeTab, {passive:true});
+activeTab();
+
+load();
+setInterval(() => { if(D) tick(); }, 20000);
+if(!window.SNAPSHOT) setInterval(() => load(), 5*60*1000);
+</script>
+</body>
+</html>
