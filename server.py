@@ -521,6 +521,51 @@ NOISE = re.compile(r"(want to invest|here'?s (what|why|how|the)|should you|stock
                    r"retire|millionaire|passive income|history says|motley|could make you|no-brainer|forever)", re.I)
 
 
+TR_FILE = BASE / "translations_cache.json"
+
+
+def _tr_one(text):
+    """Traduit un titre anglais en français (Google, puis MyMemory en secours). None si échec."""
+    try:
+        r = requests.get("https://clients5.google.com/translate_a/t", timeout=8, headers={"User-Agent": "Mozilla/5.0"},
+                         params={"client": "dict-chrome-ex", "sl": "en", "tl": "fr", "q": text})
+        out = r.json()
+        out = out[0] if isinstance(out, list) else None
+        if isinstance(out, list):
+            out = out[0]
+        if isinstance(out, str) and out.strip():
+            return out.strip()
+    except Exception:
+        pass
+    try:
+        r = requests.get("https://api.mymemory.translated.net/get", timeout=8, params={"q": text, "langpair": "en|fr"})
+        out = r.json()["responseData"]["translatedText"]
+        if out and "MYMEMORY WARNING" not in out.upper():
+            return html_lib.unescape(out).strip()
+    except Exception:
+        pass
+    return None
+
+
+def translate_fr(texts):
+    """Traductions avec cache disque (évite de retraduire le même titre à chaque mise à jour)."""
+    try:
+        cache = json.loads(TR_FILE.read_text())
+    except Exception:
+        cache = {}
+    todo = [t for t in dict.fromkeys(texts) if t not in cache]
+    if todo:
+        with ThreadPoolExecutor(4) as ex:
+            for t, fr in zip(todo, ex.map(_tr_one, todo)):
+                if fr:
+                    cache[t] = fr
+        try:
+            TR_FILE.write_text(json.dumps(dict(list(cache.items())[-600:]), ensure_ascii=False))
+        except Exception:
+            pass
+    return {t: cache.get(t) for t in texts}
+
+
 def _kw_hit(text, kw):
     return re.search(r"(?<![\w])" + re.escape(kw) + r"(?![\w])", text) is not None
 
@@ -646,7 +691,14 @@ def news(raw, now):
         for b in group:
             used.add(id(b))
         watch.append({**a, "count": len(group)})
-    return {"major": top[:8], "watch": watch[:5], "scanned": len(items)}
+    top, watch = top[:8], watch[:5]
+    en = [a for a in top + watch if a["lang"] == "en"]
+    if en:
+        tr = translate_fr([a["title"] for a in en])
+        for a in en:
+            if tr.get(a["title"]):
+                a["original"], a["title"], a["translated"] = a["title"], tr[a["title"]], True
+    return {"major": top, "watch": watch, "scanned": len(items)}
 
 
 # ----------------------------------------------------------------------------- direct vidéo

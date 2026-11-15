@@ -36,6 +36,7 @@ jobs:
           path: |
             calendar_backup.json
             notify_state.json
+            translations_cache.json
           key: state-${{ github.run_id }}
           restore-keys: state-
       - name: Générer la page avec les données du moment

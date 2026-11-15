@@ -622,12 +622,12 @@ function flash(){
   const N = D.news.major || [];
   const Wl = D.news.watch || [];
   $("#watch").innerHTML = Wl.length ? `<div class="wh">À surveiller ★★★★</div>` + Wl.map(n => `<div class="wl">
-      <span class="t">${n.time}</span><a href="${n.link}" target="_blank" rel="noopener">${n.title.replace(/</g,"&lt;")}</a>
+      <span class="t">${n.time}</span><a href="${n.link}" target="_blank" rel="noopener" ${n.translated?'title="'+n.original.replace(/"/g,"&quot;")+'"':""}>${n.title.replace(/</g,"&lt;")}</a>
       <span class="c">${n.count > 1 ? n.count + " articles" : n.source.replace(/</g,"&lt;")}</span></div>`).join("") : "";
   $("#news").innerHTML = N.length ? N.map(n => `<div class="nw strong">
       <div class="t">${n.time}<small>${ago(n.mins)}</small></div>
       <div><span class="stars">★★★★★</span><a href="${n.link}" target="_blank" rel="noopener">${n.title.replace(/</g,"&lt;")}</a>
-        <div class="meta">${n.tags.map(t => `<span class="tag">${t}</span>`).join("")}<span>${n.source.replace(/</g,"&lt;")}</span>${n.lang==="en"?'<span class="lang">EN</span>':""}</div></div></div>`).join("")
+        <div class="meta">${n.tags.map(t => `<span class="tag">${t}</span>`).join("")}<span>${n.source.replace(/</g,"&lt;")}</span>${n.translated?'<span class="lang" title="'+n.original.replace(/"/g,"&quot;")+'">traduit de l\'anglais</span>':n.lang==="en"?'<span class="lang">EN</span>':""}</div></div></div>`).join("")
     : `<div class="empty">Aucune actualité 5★ en ce moment. ${D.news.scanned} titres sur vos marchés analysés sur les dernières 24 à 30 h : rien qui devrait faire bouger fortement les marchés.</div>`;
 }
 

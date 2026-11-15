@@ -6,3 +6,4 @@ site/
 .claude/
 .ntfy_topic
 notify_state.json
+translations_cache.json
