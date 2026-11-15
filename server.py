@@ -669,9 +669,10 @@ def load_live():
                 t = re.search(r"<title>([^<]*)</title>", h)
                 print(f"[live] {name}: HTTP {r.status_code} {r.url[:70]} titre={t.group(1)[:60] if t else None} "
                       f"canonical={'canonical' in h} isLive={'isLive' in h} taille={len(h)}", file=sys.stderr)
-            vid = re.search(r'<link rel="canonical" href="https://www\.youtube\.com/watch\?v=([\w-]{11})"', h)
+            vid = (re.search(r'rel="canonical"[^>]*watch\?v=([\w-]{11})', h) or re.search(r'og:url"[^>]*watch\?v=([\w-]{11})', h)
+                   or re.search(r'"currentVideoEndpoint".{0,200}?"videoId":"([\w-]{11})"', h, re.S))
             live = bool(re.search(r'"isLiveNow":true|"isLive":true', h)) and vid is not None
-            title = re.search(r'<meta name="title" content="([^"]*)"', h)
+            title = (re.search(r'<meta name="title" content="([^"]+)"', h) or re.search(r'<meta property="og:title" content="([^"]+)"', h))
             return {"name": name, "channel": cid, "lang": lang, "live": live,
                     "video": vid.group(1) if vid else None, "title": html_lib.unescape(title.group(1)) if (title and live) else ""}
         except Exception:
