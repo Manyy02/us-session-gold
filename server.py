@@ -9,6 +9,7 @@ import html as html_lib
 import io
 import math
 import re
+import sys
 import threading
 import time as _t
 from concurrent.futures import ThreadPoolExecutor
@@ -660,9 +661,14 @@ def load_live():
     def one(ch):
         name, cid, lang = ch
         try:
-            h = requests.get(f"https://www.youtube.com/channel/{cid}/live", timeout=15,
+            r = requests.get(f"https://www.youtube.com/channel/{cid}/live", timeout=15,
                              headers={"User-Agent": "Mozilla/5.0", "Accept-Language": "fr,en"},
-                             cookies={"SOCS": "CAI"}).text  # CAI = cookies non essentiels refusés (évite la page de consentement en Europe)
+                             cookies={"SOCS": "CAI"})  # CAI = cookies non essentiels refusés (évite la page de consentement en Europe)
+            h = r.text
+            if "--debug-live" in sys.argv:
+                t = re.search(r"<title>([^<]*)</title>", h)
+                print(f"[live] {name}: HTTP {r.status_code} {r.url[:70]} titre={t.group(1)[:60] if t else None} "
+                      f"canonical={'canonical' in h} isLive={'isLive' in h} taille={len(h)}", file=sys.stderr)
             vid = re.search(r'<link rel="canonical" href="https://www\.youtube\.com/watch\?v=([\w-]{11})"', h)
             live = bool(re.search(r'"isLiveNow":true|"isLive":true', h)) and vid is not None
             title = re.search(r'<meta name="title" content="([^"]*)"', h)
