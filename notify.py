@@ -3,7 +3,7 @@
 Déclencheurs :
   - mouvement horaire anormal (bougie d'1 h ≥ 3,5× la normale) sur un des 6 marchés ;
   - séance « anormale » (variation du jour ≥ 2,5× la normale) ;
-  - actualité ⚡ (mouvement fort annoncé dans le titre) publiée il y a moins de 2 h.
+  - actualité 5★ (forte chance de faire bouger les marchés) publiée il y a moins de 2 h.
 
 Chaque alerte n'est envoyée qu'une fois : les alertes déjà envoyées sont notées dans notify_state.json.
 Le canal ntfy est lu dans la variable d'environnement NTFY_TOPIC (secret GitHub) : sans elle, le script ne fait rien.
@@ -44,10 +44,10 @@ def events(d):
             out.append((f"d:{a['key']}:{a['date']}", 4, ["chart_with_upwards_trend" if a["move"] > 0 else "chart_with_downwards_trend"],
                         f"📊 {a['label']} {a['move']:+.2f} % sur la séance",
                         f"{a['ratio']:.1f}× la variation habituelle (séance du {a['date']})", PAGE))
-    for n in d["news"]:
-        if n["strong"] and n["mins"] <= 120:
+    for n in d["news"]["major"]:
+        if n["stars"] >= 5 and n["mins"] <= 120:
             nid = "n:" + hashlib.sha1(n["title"].encode()).hexdigest()[:16]
-            out.append((nid, 4, ["zap"], "⚡ " + " · ".join(n["tags"]),
+            out.append((nid, 5, ["rotating_light"], "★★★★★ " + " · ".join(n["tags"]),
                         f"{n['title']}\n{n['source']} · {n['time']} Paris", n["link"] or PAGE))
     return out
 
@@ -69,7 +69,7 @@ def main():
         for e in evs:
             state[e[0]] = now
         send(topic, "✅ Notifications US Session & Gold activées",
-             "Vous serez prévenu des mouvements anormaux et des actualités ⚡ sur le Dow, le Nasdaq, le S&P 500, l'or, le pétrole et l'EUR/USD.",
+             "Vous serez prévenu des mouvements anormaux et des actualités 5★ sur le Dow, le Nasdaq, le S&P 500, l'or, le pétrole et l'EUR/USD.",
              priority=3, tags=["white_check_mark"])
         print(f"Première exécution : {len(evs)} alertes existantes notées, message de confirmation envoyé.")
     else:

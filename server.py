@@ -462,6 +462,29 @@ def calendar(raw, now):
 
 
 
+# ----------------------------------------------------------------------------- bilan économique
+def bilan(themes, totals):
+    st = {t["key"]: t for t in themes}
+    parts = []
+    for k, lbl in (("gdp", "croissance"), ("job", "emploi"), ("infl", "inflation"), ("rates", "taux"), ("usd", "dollar"), ("risk", "sentiment")):
+        if k in st:
+            parts.append(f"{lbl} : {st[k]['status'].lower()}")
+    pos = sum(t["tone"] == "pos" for t in themes)
+    neg = sum(t["tone"] == "neg" for t in themes) + 0.5 * sum(t["tone"] == "warn" for t in themes)
+    if pos >= neg + 1.5:
+        verdict, tone = "Économie américaine porteuse", "pos"
+    elif neg >= pos + 1.5:
+        verdict, tone = "Économie américaine sous tension", "neg"
+    else:
+        verdict, tone = "Économie américaine mitigée", "warn"
+    fav = [LABEL[k] for k in MAIN if totals[k]["score"] >= 1]
+    dfv = [LABEL[k] for k in MAIN if totals[k]["score"] <= -1]
+    return {"verdict": verdict, "tone": tone, "summary": " · ".join(parts),
+            "favours": fav, "hurts": dfv,
+            "pillars": [{"name": t["name"], "icon": t["icon"], "status": t["status"], "tone": t["tone"],
+                         "figure": t["figures"][0]["label"] + " " + t["figures"][0]["value"] if t["figures"] else ""} for t in themes]}
+
+
 # ----------------------------------------------------------------------------- actualités
 NEWS_FEEDS = [
     ("Google Actualités", "https://news.google.com/rss/search?q=(Wall%20Street%20OR%20Nasdaq%20OR%20%22Dow%20Jones%22%20OR%20%22S%26P%20500%22%20OR%20Fed%20OR%20%22prix%20de%20l%27or%22%20OR%20p%C3%A9trole%20OR%20%22euro%20dollar%22%20OR%20%22march%C3%A9s%20financiers%22)%20when:2d&hl=fr&gl=FR&ceid=FR:fr"),
@@ -528,6 +551,46 @@ def load_news():
         return [x for lst in ex.map(one, NEWS_FEEDS) for x in lst]
 
 
+# Catalyseurs capables de faire bouger fortement les marchés
+CATALYST = re.compile(
+    r"(relève ses taux|baisse ses taux|hausse surprise|baisse surprise|rate hike|rate cut|raises rates|cuts rates|hikes rates|"
+    r"emergency|d'urgence|surprise|unexpected|inattendu|disappoint|décevant|déçoit|guidance|profit warning|avertissement|"
+    r"guerre|war\b|invasion|invade|attaque|attack|missile|frappe|strike on|bombard|"
+    r"résultat des élections|election result|wins election|remporte|victoire|landslide|vague bleue|blue wave|"
+    r"droits de douane|tariffs? (on|of)|imposes|sanctions|embargo|"
+    r"défaut de paiement|default|faillite|bankrupt|bank run|collapse|effondrement|krach|crash|circuit breaker|"
+    r"halted|suspendu|black monday|panique|panic|worst day|pire séance|meilleure séance|best day since|"
+    r"cpi|inflation (jumps|surges|soars|bondit|s'envole|accélère)|payrolls|nfp|emplois? (non agricoles)?)", re.I)
+# Titres d'opinion / d'analyse : rarement la cause d'un mouvement
+OPINION = re.compile(r"(chronique|tribune|opinion|analyse|analysis|et si |what to watch|à surveiller|could |pourrait|"
+                     r"pourquoi|comment |why |how |\?)", re.I)
+BIG_PCT = re.compile(r"(\d+(?:[.,]\d+)?)\s?%")
+
+
+def _tokens(t):
+    return {w for w in re.findall(r"[a-zà-ÿ0-9&]{4,}", t.lower())}
+
+
+def stars(title, low, strong, tags, cluster):
+    """Note de 1 à 5 : chance que l'information fasse bouger fortement les marchés."""
+    sc = 1
+    if strong:
+        sc += 1.5
+    if CATALYST.search(title):
+        sc += 1.5
+    if any(float(x.replace(",", ".")) >= 2 for x in BIG_PCT.findall(title)):
+        sc += 1
+    if cluster >= 3:
+        sc += 1          # reprise par plusieurs médias en même temps
+    elif cluster == 2:
+        sc += 0.5
+    if len(tags) >= 2:
+        sc += 0.5
+    if OPINION.search(title):
+        sc -= 1.5
+    return max(1, min(5, int(sc + 0.5)))
+
+
 def news(raw, now):
     hours = 60 if now.weekday() >= 5 or now.weekday() == 0 and now.hour < 12 else 30
     cutoff = now.astimezone(ZoneInfo("UTC")) - timedelta(hours=hours)
@@ -545,17 +608,21 @@ def news(raw, now):
             tags.append("Tech / IA")
         if not tags:
             continue
-        strong = any(w in low for w in STRONG)
-        assets = sorted({a for t in tags for a in NEWS_TAGS[t][1]}, key=MAIN.index)
         loc = n["ts"].astimezone(PARIS)
         mins = int((now - n["ts"]).total_seconds() // 60)
         items.append({"title": n["title"], "source": n["source"], "link": n["link"], "lang": n["lang"],
-                      "time": loc.strftime("%H:%M"), "day": loc.strftime("%d/%m"), "mins": max(mins, 0),
-                      "tags": tags, "assets": assets, "strong": strong})
-    # Les titres forts d'abord parmi les 12 h les plus récentes, puis le reste par ordre chronologique.
-    top = [i for i in items if i["strong"] and i["mins"] < 12 * 60][:6]
-    rest = [i for i in items if i not in top]
-    return (top + rest)[:14]
+                      "time": loc.strftime("%H:%M"), "day": loc.strftime("%d/%m"), "mins": max(mins, 0), "tags": tags,
+                      "assets": sorted({a for t in tags for a in NEWS_TAGS[t][1]}, key=MAIN.index),
+                      "strong": any(w in low for w in STRONG), "_tok": _tokens(n["title"])})
+    # Nombre de titres proches (même événement couvert par plusieurs médias)
+    for a in items:
+        a["cluster"] = sum(1 for b in items if len(a["_tok"] & b["_tok"]) >= 3)
+    for a in items:
+        a["stars"] = stars(a["title"], a["title"].lower(), a["strong"], a["tags"], a["cluster"])
+        del a["_tok"]
+    top = [a for a in items if a["stars"] >= 5]
+    return {"major": top[:8], "scanned": len(items),
+            "best": sorted(items, key=lambda x: (-x["stars"], x["mins"]))[:3]}
 
 
 # ----------------------------------------------------------------------------- mouvements anormaux
@@ -604,13 +671,13 @@ def build(force=False):
     try:
         nw = news(cached("news", 240, load_news, force), now)
     except Exception:
-        nw = []
+        nw = {"major": [], "scanned": 0, "best": []}
     th, totals = themes(px, fred)
     cards = asset_cards(px)
     for c in cards:
         c["macro"] = totals[c["key"]]
     return clean({"updated": now.strftime("%d/%m/%Y %H:%M"), "session": session_info(now), "assets": cards,
-                  "themes": th, "totals": totals, "corr": correlations(px), "news": nw,
+                  "bilan": bilan(th, totals), "corr": correlations(px), "news": nw,
                   "agitation": agitation(px, intr, now), "calendar": calendar(cal, now), "labels": {k: LABEL[k] for k in MAIN}})
 
 

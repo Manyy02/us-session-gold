@@ -264,7 +264,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .nw .t small{display:block;font-family:Inter;font-size:10.5px;color:var(--faint)}
 .nw a{font-weight:600;font-size:14px;line-height:1.4;display:block}
 .nw a:hover{color:var(--accent)}
-.nw.strong a::before{content:"⚡ ";}
+.nw .stars{color:var(--accent);font-size:11px;letter-spacing:1px;margin-right:4px}
 .nw.strong{background:linear-gradient(90deg,rgba(239,68,68,.08),transparent 60%);margin:0 -18px;padding-left:18px;padding-right:18px}
 .nw .meta{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;align-items:center;font-size:11px;color:var(--faint)}
 .nw .meta span.tag{background:var(--panel2);color:var(--muted);padding:1px 7px;border-radius:6px;font-weight:600}
@@ -290,6 +290,21 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
   .ctab .lg{display:none} .ctab .sm{display:inline}
   .ctab td{padding:9px 2px}
 }
+/* ---------- bilan économique ---------- */
+.bilan .bv{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.bilan .bv .pill{font-size:13px;padding:5px 12px}
+.bsum{color:var(--muted);font-size:13.5px;flex:1;min-width:240px;line-height:1.5}
+.bfh{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.fh{border-radius:10px;padding:10px 14px;display:flex;flex-direction:column;gap:2px}
+.fh span{font-size:11px;text-transform:uppercase;letter-spacing:.05em;font-weight:600;opacity:.85}
+.fh b{color:var(--text);font-size:14px}
+.pillars{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+@media(max-width:1100px){.pillars{grid-template-columns:repeat(4,1fr)}}
+.pl{background:var(--panel2);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.pl .pn{font-size:12.5px;font-weight:600}
+.pl .pill{white-space:normal;font-size:11px}
+.pl .pf{font-size:11.5px;color:var(--muted);font-family:"JetBrains Mono",monospace}
+@media(max-width:760px){.bfh{grid-template-columns:1fr}.pillars{grid-template-columns:1fr 1fr}.bsum{min-width:0}}
 </style>
 </head>
 <body>
@@ -298,7 +313,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 <header><div class="bar">
   <div class="brand"><i></i>US Session &amp; Gold</div>
   <nav>
-    <a href="#flash">En ce moment</a><a href="#overview">Marchés</a><a href="#economy">Économie → Actifs</a>
+    <a href="#flash">En ce moment</a><a href="#overview">Marchés</a><a href="#economy">Bilan économique</a>
     <a href="#corr">Corrélations</a><a href="#calendar">Calendrier</a>
   </nav>
   <div class="clocks">
@@ -316,61 +331,26 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
         <p><b>Agitation</b> : la variation de la dernière séance comparée à la variation moyenne des 60 séances précédentes. « 2,5× » veut dire que le marché a bougé 2,5 fois plus que d'habitude.</p>
         <p><b>Calme</b> sous 1,5× · <b>agité</b> de 1,5× à 2,5× · <b>anormal</b> au-delà.</p>
         <p><b>Alerte « dernière heure »</b> : apparaît quand une bougie d'une heure bouge au moins 3,5 fois plus que la moyenne. C'est souvent le signe d'une nouvelle importante.</p>
-        <p><b>Actualités</b> : titres des dernières 24 à 30 h (Google Actualités, CNBC, Yahoo Finance) qui concernent vos 6 marchés. ⚡ = mouvement fort annoncé dans le titre.</p></span></span></h2>
+        <p><b>Actualités 5★</b> : seuls les titres qui ont de fortes chances de faire bouger les marchés sont affichés. La note monte quand le titre annonce un mouvement fort (chute, flambée…), un catalyseur majeur (décision surprise de la Fed, guerre, élection, droits de douane, résultats décevants…), une variation d'au moins 2 %, ou quand plusieurs médias couvrent le même événement. Les chroniques et analyses sont écartées. Sources : Google Actualités, CNBC, Yahoo Finance.</p></span></span></h2>
     <div class="sub">Mouvements anormaux et actualités qui concernent vos marchés.</div></div></div>
   <div id="hourAlerts"></div>
   <div class="card agit-card"><div class="label">Agitation de la dernière séance</div><div class="agit" id="agit"></div></div>
-  <div class="card news-card"><div class="label">Actualités</div><div id="news"></div></div>
+  <div class="card news-card"><div class="label">Actualités majeures ★★★★★</div><div id="news"></div></div>
 </section>
 
 <section id="overview">
-  <div class="session">
-    <div class="card">
-      <div class="label">Statut de la session</div>
-      <div class="status"><span class="dot" id="sdot"></span><span id="slabel"></span></div>
-      <div class="cds" id="cds"></div>
-    </div>
-    <div class="card">
-      <div class="label">Journée de trading (heure de New York)</div>
-      <div style="position:relative">
-        <div class="timeline" id="tl"></div>
-        <div class="ticks" id="ticks"></div>
-        <div class="now" id="nowline"></div>
-      </div>
-      <div class="keytimes">
-        <div class="kt"><b>08:30</b> · 14:30 Paris — CPI, NFP, PIB, ventes au détail</div>
-        <div class="kt"><b>09:30</b> · 15:30 Paris — ouverture de Wall Street</div>
-        <div class="kt"><b>10:00</b> · 16:00 Paris — ISM, JOLTS, confiance</div>
-        <div class="kt"><b>11:30</b> · 17:30 Paris — clôture de Londres</div>
-        <div class="kt"><b>14:00</b> · 20:00 Paris — décisions et minutes du FOMC</div>
-        <div class="kt"><b>16:00</b> · 22:00 Paris — clôture de Wall Street</div>
-      </div>
-    </div>
-  </div>
-
   <div class="head"><div><h2>Les 6 marchés suivis</h2><div class="sub" id="asof"></div></div></div>
   <div class="grid g3" id="assets"></div><div class="dots" id="dots-assets"></div>
 
 </section>
 
 <section id="economy">
-  <div class="head"><div><h2>Économie américaine → impact sur chaque actif</h2>
-    <div class="sub">Chaque ligne indique l'état d'un pilier de l'économie US et son effet habituel sur le Dow Jones, le Nasdaq, le S&amp;P 500, l'or, le pétrole et l'EUR/USD.</div></div></div>
-  <div class="card" style="padding:18px 18px 8px">
-    <div class="mhint">Touchez un pilier pour voir l'explication et les chiffres.</div>
-    <table class="matrix">
-      <thead><tr><th>Pilier économique</th><th class="a">Dow Jones</th><th class="a">Nasdaq</th><th class="a">S&amp;P 500</th><th class="a">Or</th><th class="a">Pétrole</th><th class="a">EUR/USD</th></tr></thead>
-      <tbody id="mbody"></tbody>
-      <tfoot id="mfoot"></tfoot>
-    </table>
-    <div class="legend">
-      <span><span class="chip p2" style="display:inline-flex">▲▲</span> très favorable</span>
-      <span><span class="chip p1" style="display:inline-flex">▲</span> favorable</span>
-      <span><span class="chip z" style="display:inline-flex">—</span> neutre</span>
-      <span><span class="chip m1" style="display:inline-flex">▼</span> défavorable</span>
-      <span><span class="chip m2" style="display:inline-flex">▼▼</span> très défavorable</span>
-      <span style="margin-left:auto">Le Dow est plus cyclique, le Nasdaq plus sensible aux taux. Le pétrole suit la demande, l'EUR/USD évolue à l'inverse du dollar.</span>
-    </div>
+  <div class="head"><div><h2>Bilan économique US</h2>
+    <div class="sub">L'état général de l'économie américaine et ce qu'il implique pour vos marchés.</div></div></div>
+  <div class="card bilan">
+    <div class="bv"><span class="pill" id="bpill"></span><div class="bsum" id="bsum"></div></div>
+    <div class="bfh" id="bfh"></div>
+    <div class="pillars" id="pillars"></div>
   </div>
 </section>
 
@@ -441,7 +421,7 @@ function render(){
   $("#upd").textContent = "· Mis à jour le " + D.updated;
   tick();
   $("#asof").textContent = "Dernière clôture : " + D.assets[0].date + " · variations sur 1 jour, 1 semaine, 1 mois et depuis le 1er janvier";
-  flash(); assets(); matrix(); corrTable(); calendar();
+  flash(); assets(); bilan(); corrTable(); calendar();
   dots("assets");
 }
 
@@ -470,11 +450,8 @@ function tick(){
   const s = sessionNow();
   $("#ny").textContent = s.ny; $("#paris").textContent = s.paris;
   const col = {us:"#22c55e", pre:"#f59e0b", london:"#60a5fa", asia:"#a78bfa", closed:"#5b6577"}[s.phase];
-  $("#sdot").style.background = col; $("#sdot").style.boxShadow = "0 0 10px " + col; $("#slabel").textContent = s.label;
-  $("#cds").innerHTML = s.countdowns.map(c => {
-    const h = Math.floor(c.m/60), m = c.m % 60;
-    return `<div class="cd"><div class="label" style="text-transform:none">${c.label}</div><div class="num">${h>=24?Math.floor(h/24)+" j "+(h%24)+" h":h+" h "+String(m).padStart(2,"0")}</div></div>`;}).join("");
-  timeline(s.minute_of_day);
+  const dot = document.querySelector(".brand i"); dot.style.background = col; dot.style.boxShadow = "0 0 10px " + col;
+  dot.parentElement.title = s.label;
 }
 
 // Points sous les carrousels mobiles
@@ -521,16 +498,14 @@ function assets(){
 }
 
 const chip = v => `<span class="chip ${["m2","m1","z","p1","p2"][v+2]}">${["▼▼","▼","—","▲","▲▲"][v+2]}</span>`;
-function matrix(){
-  const K = ["dow","ndx","spx","gold","oil","eur"], L = {dow:"Dow",ndx:"Nasdaq",spx:"S&P 500",gold:"Or",oil:"Pétrole",eur:"EUR/USD"};
-  $("#mbody").innerHTML = D.themes.map(t => `<tr><td>
-      <div class="theme-name"><span class="ic">${t.icon}</span>${t.name}<span class="pill ${t.tone}">${t.status}</span><span class="chev">›</span></div>
-      <div class="theme-expl">${t.explain}</div>
-      <div class="figs">${t.figures.map(f => `<span class="fig">${f.label} <b>${f.value}</b><small>${f.prev?"préc. "+f.prev:""}</small></span>`).join("")}</div></td>
-      ${K.map(k => `<td class="a" data-l="${L[k]}"><div class="imp">${chip(t.impacts[k])}</div></td>`).join("")}</tr>`).join("");
-  $("#mfoot").innerHTML = `<tr><td><div class="theme-name">Bilan macro</div><div class="theme-expl">Somme des effets de chaque pilier : plus le score est élevé, plus l'environnement économique est porteur pour l'actif.</div></td>
-    ${K.map(k => { const t = D.totals[k], tone = t.score>0?"pos":t.score<0?"neg":"neutral";
-      return `<td class="a" data-l="${L[k]}"><div class="imp"><span class="num ${cls(t.score)}" style="font-size:22px;font-weight:600">${t.score>0?"+":""}${t.score}</span><span class="pill ${tone}">${t.verdict}</span></div></td>`;}).join("")}</tr>`;
+function bilan(){
+  const b = D.bilan, short = l => l.replace(" (XAUUSD)","").replace(" 100","").replace(" WTI","");
+  $("#bpill").className = "pill " + b.tone; $("#bpill").textContent = b.verdict;
+  $("#bsum").textContent = b.summary.charAt(0).toUpperCase() + b.summary.slice(1) + ".";
+  $("#bfh").innerHTML = `<div class="fh pos"><span>Favorise</span><b>${b.favours.length ? b.favours.map(short).join(" · ") : "Aucun de vos marchés"}</b></div>
+    <div class="fh neg"><span>Pèse sur</span><b>${b.hurts.length ? b.hurts.map(short).join(" · ") : "Aucun de vos marchés"}</b></div>`;
+  $("#pillars").innerHTML = b.pillars.map(p => `<div class="pl"><div class="pn">${p.icon} ${p.name}</div>
+    <span class="pill ${p.tone}">${p.status}</span><div class="pf">${p.figure}</div></div>`).join("");
 }
 
 function corrTable(){
@@ -557,11 +532,12 @@ function flash(){
       <div class="n"><span>${a.label.replace(" (XAUUSD)","")}</span><span>${a.date}</span></div>
       <div class="m num ${cls(a.move)}">${sg(a.move)}</div>
       <div class="r">${a.level === "calme" ? "Calme" : a.level === "agité" ? "Agité" : "Anormal"} · ${fr(a.ratio,1)}× la normale</div></div>`).join("");
-  $("#news").innerHTML = D.news.length ? D.news.map(n => `<div class="nw ${n.strong?"strong":""}">
+  const N = D.news.major || [];
+  $("#news").innerHTML = N.length ? N.map(n => `<div class="nw strong">
       <div class="t">${n.time}<small>${ago(n.mins)}</small></div>
-      <div><a href="${n.link}" target="_blank" rel="noopener">${n.title.replace(/</g,"&lt;")}</a>
+      <div><span class="stars">★★★★★</span><a href="${n.link}" target="_blank" rel="noopener">${n.title.replace(/</g,"&lt;")}</a>
         <div class="meta">${n.tags.map(t => `<span class="tag">${t}</span>`).join("")}<span>${n.source.replace(/</g,"&lt;")}</span>${n.lang==="en"?'<span class="lang">EN</span>':""}</div></div></div>`).join("")
-    : `<div class="empty">Aucune actualité marquante sur vos marchés pour le moment.</div>`;
+    : `<div class="empty">Aucune actualité 5★ en ce moment. ${D.news.scanned} titres sur vos marchés analysés sur les dernières 24 à 30 h : rien qui devrait faire bouger fortement les marchés.</div>`;
 }
 
 function calendar(){
