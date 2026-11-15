@@ -305,6 +305,29 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .pl .pill{white-space:normal;font-size:11px}
 .pl .pf{font-size:11.5px;color:var(--muted);font-family:"JetBrains Mono",monospace}
 @media(max-width:760px){.bfh{grid-template-columns:1fr}.pillars{grid-template-columns:1fr 1fr}.bsum{min-width:0}}
+/* ---------- direct ---------- */
+.livebox{display:grid;grid-template-columns:1.25fr 1fr;gap:12px;margin-bottom:12px}
+.livebox>.card{margin-bottom:0}
+@media(max-width:1100px){.livebox{grid-template-columns:1fr}}
+.lvh{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+#chseg{overflow-x:auto;max-width:100%;scrollbar-width:none}
+#chseg button{flex:none;font-size:12px;padding:5px 10px}
+.vid{position:relative;aspect-ratio:16/9;max-width:100%;border-radius:10px;overflow:hidden;background:#000}
+.vid iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.vid .empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.vtitle{font-size:12px;color:var(--muted);margin-top:8px}
+.speech{font-size:12.5px;color:var(--muted);margin-bottom:10px}
+.speech:empty{display:none}
+.speech b{color:var(--text)}
+.speech.now{color:var(--down);background:var(--down-bg);padding:8px 12px;border-radius:8px}
+.tvgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tv{height:150px;background:var(--panel2);border-radius:10px;overflow:hidden}
+.watch .wh{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:16px 0 4px}
+.wl{display:grid;grid-template-columns:50px 1fr auto;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13px;align-items:baseline}
+.wl .t{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--faint)}
+.wl a{color:var(--muted)} .wl a:hover{color:var(--text)}
+.wl .c{font-size:11px;color:var(--faint);white-space:nowrap}
+@media(max-width:760px){.tv{height:130px}.wl{grid-template-columns:42px 1fr}.wl .c{grid-column:2}}
 </style>
 </head>
 <body>
@@ -331,11 +354,29 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
         <p><b>Agitation</b> : la variation de la dernière séance comparée à la variation moyenne des 60 séances précédentes. « 2,5× » veut dire que le marché a bougé 2,5 fois plus que d'habitude.</p>
         <p><b>Calme</b> sous 1,5× · <b>agité</b> de 1,5× à 2,5× · <b>anormal</b> au-delà.</p>
         <p><b>Alerte « dernière heure »</b> : apparaît quand une bougie d'une heure bouge au moins 3,5 fois plus que la moyenne. C'est souvent le signe d'une nouvelle importante.</p>
+        <p><b>En direct</b> : la chaîne de la Réserve fédérale passe en premier quand un responsable de la Fed parle. Sinon : Bloomberg TV, Yahoo Finance ou France 24 (en français). Son coupé au départ : touchez la vidéo pour l'activer.</p>
+        <p><b>À surveiller (4★)</b> : un mouvement en cours ou une déclaration qui compte, regroupés par événement. Utile pour comprendre le contexte, sans urgence.</p>
         <p><b>Actualités 5★</b> : seuls les titres qui ont de fortes chances de faire bouger les marchés sont affichés. La note monte quand le titre annonce un mouvement fort (chute, flambée…), un catalyseur majeur (décision surprise de la Fed, guerre, élection, droits de douane, résultats décevants…), une variation d'au moins 2 %, ou quand plusieurs médias couvrent le même événement. Les chroniques et analyses sont écartées. Sources : Google Actualités, CNBC, Yahoo Finance.</p></span></span></h2>
     <div class="sub">Mouvements anormaux et actualités qui concernent vos marchés.</div></div></div>
   <div id="hourAlerts"></div>
+  <div class="livebox" id="livebox">
+    <div class="card lvv">
+      <div class="lvh"><div class="label">En direct</div><div class="seg" id="chseg"></div></div>
+      <div class="speech" id="speech"></div>
+      <div class="vid" id="vid"></div>
+      <div class="vtitle" id="vtitle"></div>
+    </div>
+    <div class="card lvc">
+      <div class="lvh"><div class="label">Cours en temps réel
+        <span class="tip r" tabindex="0">?<span class="bubble">
+          <p>Graphiques TradingView mis à jour en continu (journée en cours). Ils suivent les CFD les plus proches de vos marchés : US30 pour le Dow, NAS100 pour le Nasdaq, SPX500 pour le S&amp;P 500, XAUUSD pour l'or, WTI pour le pétrole.</p>
+          <p>Touchez un graphique pour l'ouvrir en grand sur TradingView.</p></span></span></div></div>
+      <div class="tvgrid" id="tvgrid"></div>
+    </div>
+  </div>
   <div class="card agit-card"><div class="label">Agitation de la dernière séance</div><div class="agit" id="agit"></div></div>
-  <div class="card news-card"><div class="label">Actualités majeures ★★★★★</div><div id="news"></div></div>
+  <div class="card news-card"><div class="label">Actualités majeures ★★★★★</div><div id="news"></div>
+    <div class="watch" id="watch"></div></div>
 </section>
 
 <section id="overview">
@@ -421,7 +462,7 @@ function render(){
   $("#upd").textContent = "· Mis à jour le " + D.updated;
   tick();
   $("#asof").textContent = "Dernière clôture : " + D.assets[0].date + " · variations sur 1 jour, 1 semaine, 1 mois et depuis le 1er janvier";
-  flash(); assets(); bilan(); corrTable(); calendar();
+  flash(); live(); assets(); bilan(); corrTable(); calendar();
   dots("assets");
 }
 
@@ -508,6 +549,52 @@ function bilan(){
     <span class="pill ${p.tone}">${p.status}</span><div class="pf">${p.figure}</div></div>`).join("");
 }
 
+// ---------- direct vidéo + courbes temps réel
+let CH = null, TVDONE = false;
+const TV = [["OANDA:US30USD","Dow Jones"],["OANDA:NAS100USD","Nasdaq 100"],["OANDA:SPX500USD","S&P 500"],
+            ["OANDA:XAUUSD","Or"],["TVC:USOIL","Pétrole WTI"],["FX:EURUSD","EUR/USD"]];
+function live(){
+  if(D.mode === "artifact"){
+    $("#livebox").innerHTML = '<div class="card empty" style="grid-column:1/-1">Le direct vidéo et les cours en temps réel sont disponibles sur la version en ligne : manyy02.github.io/us-session-gold</div>';
+    return;
+  }
+  const L = (D.live || []).filter(l => l.live);
+  if(!CH || !L.some(l => l.channel === CH)) CH = (L[0] || {}).channel || null;
+  const fed = L.find(l => l.name === "Réserve fédérale");
+  $("#chseg").innerHTML = L.map(l => `<button data-ch="${l.channel}" class="${l.channel===CH?"on":""}">${l.name==="Réserve fédérale"?"🔴 ":""}${l.name}${l.lang==="fr"?" · FR":""}</button>`).join("");
+  const cur = L.find(l => l.channel === CH);
+  const v = $("#vid");
+  if(cur){
+    if(v.dataset.video !== cur.video){
+      v.dataset.video = cur.video;
+      const auto = innerWidth > 760 ? 1 : 0;
+      v.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${cur.video}?autoplay=${auto}&mute=1&playsinline=1&rel=0" title="${cur.name} en direct"
+        allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe>`;
+    }
+    $("#vtitle").textContent = cur.title;
+  } else { v.innerHTML = '<div class="empty">Aucun direct disponible pour le moment.</div>'; v.dataset.video = ""; $("#vtitle").textContent = ""; }
+  // Prochaine prise de parole de la Fed
+  const sp = D.speech, el = $("#speech");
+  if(fed){ el.className = "speech now"; el.innerHTML = `🔴 <b>La Fed parle en ce moment</b> · ${fed.title}`; }
+  else if(sp){
+    const m = Math.round((new Date(sp.iso) - Date.now()) / 60000);
+    const when = m <= 0 ? "en cours ou terminé" : m < 60 ? `dans ${m} min` : m < 1440 ? `dans ${Math.floor(m/60)} h ${String(m%60).padStart(2,"0")}` : `dans ${Math.floor(m/1440)} j`;
+    el.className = "speech"; el.innerHTML = `🎙 Prochaine prise de parole : <b>${sp.title}</b> · ${sp.ny.split(" ").slice(1).join(" ")} NY (${sp.paris} Paris) · ${when}`;
+  } else { el.className = "speech"; el.textContent = ""; }
+  if(!TVDONE){
+    TVDONE = true;
+    TV.forEach(([sym]) => {
+      const w = document.createElement("div"); w.className = "tradingview-widget-container tv";
+      w.innerHTML = '<div class="tradingview-widget-container__widget"></div>';
+      const sc = document.createElement("script");
+      sc.src = "https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js"; sc.async = true;
+      sc.textContent = JSON.stringify({symbol:sym, width:"100%", height:"100%", locale:"fr", dateRange:"1D", colorTheme:"dark",
+        isTransparent:false, autosize:true, chartOnly:false, noTimeScale:false});
+      w.appendChild(sc); $("#tvgrid").appendChild(w);
+    });
+  }
+}
+
 function corrTable(){
   const c = D.corr, K = c.order, M = c.matrix;
   const name = {dow:"Dow",ndx:"Nasdaq",spx:"S&P 500",gold:"Or",oil:"Pétrole",eur:"EUR/USD",dxy:"Dollar"};
@@ -533,6 +620,10 @@ function flash(){
       <div class="m num ${cls(a.move)}">${sg(a.move)}</div>
       <div class="r">${a.level === "calme" ? "Calme" : a.level === "agité" ? "Agité" : "Anormal"} · ${fr(a.ratio,1)}× la normale</div></div>`).join("");
   const N = D.news.major || [];
+  const Wl = D.news.watch || [];
+  $("#watch").innerHTML = Wl.length ? `<div class="wh">À surveiller ★★★★</div>` + Wl.map(n => `<div class="wl">
+      <span class="t">${n.time}</span><a href="${n.link}" target="_blank" rel="noopener">${n.title.replace(/</g,"&lt;")}</a>
+      <span class="c">${n.count > 1 ? n.count + " articles" : n.source.replace(/</g,"&lt;")}</span></div>`).join("") : "";
   $("#news").innerHTML = N.length ? N.map(n => `<div class="nw strong">
       <div class="t">${n.time}<small>${ago(n.mins)}</small></div>
       <div><span class="stars">★★★★★</span><a href="${n.link}" target="_blank" rel="noopener">${n.title.replace(/</g,"&lt;")}</a>
@@ -565,6 +656,7 @@ document.addEventListener("click", e => {
   const row = e.target.closest(".matrix tbody tr");
   if(row && !e.target.closest(".tip")) row.classList.toggle("open");
   const b = e.target.closest("button"); if(!b) return;
+  if(b.dataset.ch){ CH = b.dataset.ch; live(); return; }
   if(b.dataset.day){ CALDAY = b.dataset.day; calendar(); return; }
   if(b.id==="refresh") return window.SNAPSHOT ? location.reload() : load(true);
   if(b.dataset.i){ IMP = b.dataset.i; document.querySelectorAll("#iseg button").forEach(x => x.classList.toggle("on", x===b)); calendar(); }

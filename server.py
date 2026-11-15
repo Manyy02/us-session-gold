@@ -5,6 +5,7 @@ Sources : Yahoo Finance (prix), FRED (macro US), ForexFactory (calendrier).
 """
 from __future__ import annotations
 
+import html as html_lib
 import io
 import math
 import re
@@ -565,6 +566,14 @@ CATALYST = re.compile(
 OPINION = re.compile(r"(chronique|tribune|opinion|analyse|analysis|et si |what to watch|à surveiller|could |pourrait|"
                      r"pourquoi|comment |why |how |\?)", re.I)
 BIG_PCT = re.compile(r"(\d+(?:[.,]\d+)?)\s?%")
+# Déclaration d'un responsable de la Fed (souvent à l'origine de mouvements sur les taux, le dollar et l'or)
+FED_OFFICIAL = re.compile(r"\b(powell|warsh|goolsbee|waller|williams|bowman|jefferson|barr|cook|logan|hammack|musalem|schmid|"
+                          r"kashkari|daly|bostic|barkin|harker|collins|paulson|miran|fed chair|président de la fed)\b", re.I)
+FED_TONE = re.compile(r"(warns?|signals?|hints?|says|calls for|pushes|backs|rules out|prévient|avertit|signale|plaide|exclut|"
+                      r"hike|cut|hausse|baisse|aggressive|restrictive|dovish|hawkish)", re.I)
+# Montant spectaculaire (capitalisation effacée, etc.)
+BIG_MONEY = re.compile(r"(\$\s?\d+(?:[.,]\d+)?\s?(trillion|tn)|\d+(?:[.,]\d+)?\s?(trillion|billions? de dollars|milliards de dollars)|"
+                       r"\d+(?:[.,]\d+)?\s?000 milliards)", re.I)
 
 
 def _tokens(t):
@@ -579,6 +588,10 @@ def stars(title, low, strong, tags, cluster):
     if CATALYST.search(title):
         sc += 1.5
     if any(float(x.replace(",", ".")) >= 2 for x in BIG_PCT.findall(title)):
+        sc += 1
+    if FED_OFFICIAL.search(title) and FED_TONE.search(title):
+        sc += 1.5
+    if BIG_MONEY.search(title):
         sc += 1
     if cluster >= 3:
         sc += 1          # reprise par plusieurs médias en même temps
@@ -621,8 +634,55 @@ def news(raw, now):
         a["stars"] = stars(a["title"], a["title"].lower(), a["strong"], a["tags"], a["cluster"])
         del a["_tok"]
     top = [a for a in items if a["stars"] >= 5]
-    return {"major": top[:8], "scanned": len(items),
-            "best": sorted(items, key=lambda x: (-x["stars"], x["mins"]))[:3]}
+    # 4 étoiles : un seul titre par événement (le plus récent), avec le nombre d'articles qui en parlent
+    watch, used = [], set()
+    for a in items:
+        if a["stars"] != 4 or id(a) in used:
+            continue
+        group = [b for b in items if b["stars"] == 4 and id(b) not in used and len(_tokens(a["title"]) & _tokens(b["title"])) >= 2
+                 and set(a["tags"]) & set(b["tags"])]
+        for b in group:
+            used.add(id(b))
+        watch.append({**a, "count": len(group)})
+    return {"major": top[:8], "watch": watch[:5], "scanned": len(items)}
+
+
+# ----------------------------------------------------------------------------- direct vidéo
+LIVE_CHANNELS = [  # (nom, identifiant de chaîne YouTube, langue)
+    ("Réserve fédérale", "UCAzhpt9DmG6PnHXjmJTvRGQ", "en"),
+    ("Bloomberg TV", "UCIALMKvObZNtJ6AmdCLP7Lg", "en"),
+    ("Yahoo Finance", "UCEAZeUIeJs0IjQiqTCdVSIg", "en"),
+    ("France 24", "UCCCPCZNChQdGa9EkATeye4g", "fr"),
+]
+
+
+def load_live():
+    def one(ch):
+        name, cid, lang = ch
+        try:
+            h = requests.get(f"https://www.youtube.com/channel/{cid}/live", timeout=15,
+                             headers={"User-Agent": "Mozilla/5.0", "Accept-Language": "fr,en"},
+                             cookies={"SOCS": "CAI"}).text  # CAI = cookies non essentiels refusés (évite la page de consentement en Europe)
+            vid = re.search(r'<link rel="canonical" href="https://www\.youtube\.com/watch\?v=([\w-]{11})"', h)
+            live = bool(re.search(r'"isLiveNow":true|"isLive":true', h)) and vid is not None
+            title = re.search(r'<meta name="title" content="([^"]*)"', h)
+            return {"name": name, "channel": cid, "lang": lang, "live": live,
+                    "video": vid.group(1) if vid else None, "title": html_lib.unescape(title.group(1)) if (title and live) else ""}
+        except Exception:
+            return {"name": name, "channel": cid, "lang": lang, "live": False, "video": None, "title": ""}
+    with ThreadPoolExecutor(4) as ex:
+        return list(ex.map(one, LIVE_CHANNELS))
+
+
+def next_speech(raw, now):
+    """Prochaine prise de parole d'un responsable de la Fed (ou conférence de presse) dans le calendrier."""
+    for e in sorted(raw, key=lambda e: e["date"]):
+        d = pd.Timestamp(e["date"]).tz_convert(NY)
+        t = e["title"].lower()
+        if d >= now - timedelta(minutes=90) and any(k in t for k in ("speaks", "testifies", "press conference")):
+            return {"title": fr_title(e["title"]), "ny": d.strftime("%a %d/%m %H:%M"), "paris": d.tz_convert(PARIS).strftime("%H:%M"),
+                    "iso": d.isoformat(), "impact": e.get("impact")}
+    return None
 
 
 # ----------------------------------------------------------------------------- mouvements anormaux
@@ -669,15 +729,19 @@ def build(force=False):
     except Exception:
         intr = None
     try:
+        live = cached("live", 600, load_live, force)
+    except Exception:
+        live = []
+    try:
         nw = news(cached("news", 240, load_news, force), now)
     except Exception:
-        nw = {"major": [], "scanned": 0, "best": []}
+        nw = {"major": [], "watch": [], "scanned": 0}
     th, totals = themes(px, fred)
     cards = asset_cards(px)
     for c in cards:
         c["macro"] = totals[c["key"]]
     return clean({"updated": now.strftime("%d/%m/%Y %H:%M"), "session": session_info(now), "assets": cards,
-                  "bilan": bilan(th, totals), "corr": correlations(px), "news": nw,
+                  "bilan": bilan(th, totals), "corr": correlations(px), "news": nw, "live": live, "speech": next_speech(cal, now),
                   "agitation": agitation(px, intr, now), "calendar": calendar(cal, now), "labels": {k: LABEL[k] for k in MAIN}})
 
 
