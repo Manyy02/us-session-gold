@@ -42,9 +42,6 @@ jobs:
         run: |
           for i in 1 2 3; do python export_artifact.py --pages && break; echo "Nouvel essai dans 30 s"; sleep 30; done
           test -s site/index.html
-      - name: Diagnostic direct YouTube
-        run: python -c "import sys; sys.argv.append('--debug-live'); import server; print(server.load_live())"
-        continue-on-error: true
       - name: Notifications téléphone (ntfy)
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
